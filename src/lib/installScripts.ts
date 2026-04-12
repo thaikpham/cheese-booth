@@ -14,15 +14,53 @@ export interface LatestReleaseStatus {
 
 const REPO_OWNER = 'thaikpham'
 const REPO_NAME = 'colorlabv2-photokiosk'
-const RELEASE_BASE_URL =
-  `https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/latest/download`
 const LATEST_RELEASE_API_URL =
   `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest`
 export const RELEASES_PAGE_URL =
   `https://github.com/${REPO_OWNER}/${REPO_NAME}/releases`
 
-function releaseAssetUrl(assetName: string): string {
-  return `${RELEASE_BASE_URL}/${assetName}`
+function buildBashAssetResolver(pattern: string, description: string): string {
+  return String.raw`LATEST_RELEASE_API_URL="${LATEST_RELEASE_API_URL}"
+
+resolve_asset_url() {
+  local pattern="$1"
+  local description="$2"
+  local release_payload
+  local asset_url
+
+  release_payload="$(curl -fsSL -H 'Accept: application/vnd.github+json' "$LATEST_RELEASE_API_URL")"
+  asset_url="$(printf '%s' "$release_payload" \
+    | grep -oE '"browser_download_url":"[^"]+"' \
+    | sed -E 's/^"browser_download_url":"//; s/"$//; s#\\/#/#g' \
+    | grep -E "$pattern" \
+    | head -n 1)"
+
+  if [ -z "$asset_url" ]; then
+    echo "Không tìm thấy asset $description trong latest release." >&2
+    exit 1
+  fi
+
+  printf '%s\n' "$asset_url"
+}
+
+URL="$(resolve_asset_url '${pattern}' '${description}')"
+ASSET="$(basename "$URL")"`
+}
+
+function buildPowerShellAssetResolver(pattern: string, description: string): string {
+  return String.raw`$latestReleaseApiUrl = "${LATEST_RELEASE_API_URL}"
+$assetPattern = '${pattern}'
+$assetDescription = "${description}"
+
+$release = Invoke-RestMethod -Headers @{ Accept = "application/vnd.github+json" } -Uri $latestReleaseApiUrl
+$asset = $release.assets | Where-Object { $_.browser_download_url -match $assetPattern } | Select-Object -First 1
+
+if (-not $asset) {
+  throw "Không tìm thấy asset $assetDescription trong latest release."
+}
+
+$assetName = $asset.name
+$url = $asset.browser_download_url`
 }
 
 export const INSTALL_SCRIPT_SNIPPETS: InstallScriptSnippet[] = [
@@ -30,13 +68,12 @@ export const INSTALL_SCRIPT_SNIPPETS: InstallScriptSnippet[] = [
     id: 'macos-apple-silicon',
     label: 'Sao chép script',
     platform: 'macOS Apple Silicon',
-    summary: 'Tải bản DMG ARM64 mới nhất, cài vào Applications và mở app ngay.',
+    summary: 'Tự tìm bản DMG Apple Silicon mới nhất, cài vào Applications và mở app ngay.',
     script: String.raw`#!/usr/bin/env bash
 set -euo pipefail
 
 # ColorLab V2 Photo Kiosk — macOS Apple Silicon
-ASSET="colorlabv2-photokiosk-macos-aarch64.dmg"
-URL="${releaseAssetUrl('colorlabv2-photokiosk-macos-aarch64.dmg')}"
+${buildBashAssetResolver('darwin.*(aarch64|arm64).*\\.dmg$', 'DMG macOS Apple Silicon')}
 APP_NAME="Sony USB Webcam Kiosk.app"
 TMP_DIR="$(mktemp -d)"
 MOUNT_DIR="$TMP_DIR/mount"
@@ -67,13 +104,12 @@ open "/Applications/$APP_NAME"`,
     id: 'macos-intel',
     label: 'Sao chép script',
     platform: 'macOS Intel',
-    summary: 'Tải bản DMG x86_64 mới nhất, cài vào Applications và mở app ngay.',
+    summary: 'Tự tìm bản DMG Intel mới nhất, cài vào Applications và mở app ngay.',
     script: String.raw`#!/usr/bin/env bash
 set -euo pipefail
 
 # ColorLab V2 Photo Kiosk — macOS Intel
-ASSET="colorlabv2-photokiosk-macos-x86_64.dmg"
-URL="${releaseAssetUrl('colorlabv2-photokiosk-macos-x86_64.dmg')}"
+${buildBashAssetResolver('darwin.*(x64|x86_64).*\\.dmg$', 'DMG macOS Intel')}
 APP_NAME="Sony USB Webcam Kiosk.app"
 TMP_DIR="$(mktemp -d)"
 MOUNT_DIR="$TMP_DIR/mount"
@@ -104,19 +140,18 @@ open "/Applications/$APP_NAME"`,
     id: 'windows-x64',
     label: 'Sao chép script',
     platform: 'Windows 11 x64',
-    summary: 'Tải bộ cài MSI x64 mới nhất và cài silent bằng quyền quản trị.',
+    summary: 'Tự tìm bộ cài MSI x64 mới nhất và cài silent bằng quyền quản trị.',
     script: String.raw`# ColorLab V2 Photo Kiosk — Windows 11 x64
 $ErrorActionPreference = "Stop"
 
-$asset = "colorlabv2-photokiosk-windows-x86_64.msi"
-$url = "${releaseAssetUrl('colorlabv2-photokiosk-windows-x86_64.msi')}"
+${buildPowerShellAssetResolver('windows.*(x64|x86_64).*\\.msi$', 'MSI Windows x64')}
 $tempDir = Join-Path $env:TEMP "colorlabv2-photokiosk"
-$installerPath = Join-Path $tempDir $asset
+$installerPath = Join-Path $tempDir $assetName
 
 Write-Host "Đang tạo thư mục tạm..."
 New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
 
-Write-Host "Đang tải bộ cài $asset..."
+Write-Host "Đang tải bộ cài $assetName..."
 Invoke-WebRequest -Uri $url -OutFile $installerPath
 
 Write-Host "Đang cài đặt ứng dụng..."
@@ -128,19 +163,18 @@ Write-Host "Hoàn tất cài đặt."`,
     id: 'windows-arm64',
     label: 'Sao chép script',
     platform: 'Windows 11 ARM64',
-    summary: 'Tải bộ cài MSI ARM64 mới nhất và cài silent bằng quyền quản trị.',
+    summary: 'Tự tìm bộ cài MSI ARM64 mới nhất và cài silent bằng quyền quản trị.',
     script: String.raw`# ColorLab V2 Photo Kiosk — Windows 11 ARM64
 $ErrorActionPreference = "Stop"
 
-$asset = "colorlabv2-photokiosk-windows-aarch64.msi"
-$url = "${releaseAssetUrl('colorlabv2-photokiosk-windows-aarch64.msi')}"
+${buildPowerShellAssetResolver('windows.*(arm64|aarch64).*\\.msi$', 'MSI Windows ARM64')}
 $tempDir = Join-Path $env:TEMP "colorlabv2-photokiosk"
-$installerPath = Join-Path $tempDir $asset
+$installerPath = Join-Path $tempDir $assetName
 
 Write-Host "Đang tạo thư mục tạm..."
 New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
 
-Write-Host "Đang tải bộ cài $asset..."
+Write-Host "Đang tải bộ cài $assetName..."
 Invoke-WebRequest -Uri $url -OutFile $installerPath
 
 Write-Host "Đang cài đặt ứng dụng..."
@@ -152,13 +186,12 @@ Write-Host "Hoàn tất cài đặt."`,
     id: 'ubuntu-x64',
     label: 'Sao chép script',
     platform: 'Ubuntu x64',
-    summary: 'Tải gói DEB mới nhất và cài trực tiếp bằng apt trên máy kiosk Ubuntu.',
+    summary: 'Tự tìm gói DEB x64 mới nhất và cài đặt bằng apt trên Ubuntu.',
     script: String.raw`#!/usr/bin/env bash
 set -euo pipefail
 
 # ColorLab V2 Photo Kiosk — Ubuntu x64
-ASSET="colorlabv2-photokiosk-linux-x86_64.deb"
-URL="${releaseAssetUrl('colorlabv2-photokiosk-linux-x86_64.deb')}"
+${buildBashAssetResolver('linux.*(amd64|x86_64|x64).*\\.deb$', 'DEB Ubuntu x64')}
 TMP_DIR="$(mktemp -d)"
 PACKAGE_PATH="$TMP_DIR/$ASSET"
 
@@ -179,13 +212,12 @@ echo "Hoàn tất cài đặt."`,
     id: 'fedora-x64',
     label: 'Sao chép script',
     platform: 'Fedora x64',
-    summary: 'Tải gói RPM mới nhất và cài trực tiếp bằng dnf trên máy kiosk Fedora.',
+    summary: 'Tự tìm gói RPM x64 mới nhất và cài đặt bằng dnf trên Fedora.',
     script: String.raw`#!/usr/bin/env bash
 set -euo pipefail
 
 # ColorLab V2 Photo Kiosk — Fedora x64
-ASSET="colorlabv2-photokiosk-linux-x86_64.rpm"
-URL="${releaseAssetUrl('colorlabv2-photokiosk-linux-x86_64.rpm')}"
+${buildBashAssetResolver('linux.*(amd64|x86_64|x64).*\\.rpm$', 'RPM Fedora x64')}
 TMP_DIR="$(mktemp -d)"
 PACKAGE_PATH="$TMP_DIR/$ASSET"
 
