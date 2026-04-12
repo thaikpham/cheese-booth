@@ -4,7 +4,7 @@ const PHOTO_LANDSCAPE_RATIO = 4 / 3
 const PHOTO_PORTRAIT_RATIO = 3 / 4
 const BOOMERANG_DURATION_MS = 3_000
 const BOOMERANG_FPS = 15
-const BOOMERANG_MAX_LONG_EDGE = 1280
+const BOOMERANG_MAX_LONG_EDGE = 1920
 
 export interface RenderedCapture {
   blob: Blob
@@ -229,7 +229,7 @@ export async function renderPhotoFromVideo(
     transform,
   )
 
-  const blob = await toBlob(canvas, 'image/jpeg', 0.92)
+  const blob = await toBlob(canvas, 'image/jpeg', 1.0)
 
   return {
     blob,
@@ -362,8 +362,8 @@ export async function renderBoomerangFromVideo(
   const { mimeType, extension } = pickRecorderMimeType()
 
   const recorder = mimeType
-    ? new MediaRecorder(stream, { mimeType })
-    : new MediaRecorder(stream)
+    ? new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8000000 })
+    : new MediaRecorder(stream, { videoBitsPerSecond: 8000000 })
 
   const chunks: Blob[] = []
   const finishedBlob = new Promise<Blob>((resolve) => {

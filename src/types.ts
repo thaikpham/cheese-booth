@@ -39,7 +39,7 @@ export const DEFAULT_OPERATOR_SETTINGS: OperatorSettings = {
   deviceId: null,
   countdownSec: 3,
   rotationQuarter: 0,
-  flipHorizontal: false,
+  flipHorizontal: true,
   flipVertical: false,
   outputDir: null,
 }

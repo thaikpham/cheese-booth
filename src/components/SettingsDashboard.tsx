@@ -95,6 +95,7 @@ export function SettingsDashboard({
   onRefreshSources,
 }: SettingsDashboardProps) {
   const [activeSection, setActiveSection] = useState<SectionId>('overview')
+  const [downloadTab, setDownloadTab] = useState<'end-user' | 'scripts'>('end-user')
   const persistedOutputDir = settings.outputDir ?? ''
   const [copiedScriptId, setCopiedScriptId] = useState<string | null>(null)
   const releaseCatalog = useLatestReleaseCatalog()
@@ -513,123 +514,142 @@ export function SettingsDashboard({
               <p className="sd-panel-sub">Desktop distribution và script cài đặt</p>
             </header>
 
-            <section className="sd-install-section" aria-label="Desktop downloads">
-              <div className="sd-install-section-head">
-                <div>
-                  <p className="sd-install-kicker">Phân phối end-user</p>
-                  <h3>Tải desktop app</h3>
-                  <p className="sd-install-section-copy">
-                    Ưu tiên direct download cho người dùng cuối. Route public
-                    `/#/download` dùng cùng release catalog để luôn hiển thị
-                    đúng installer trên GitHub Releases.
-                  </p>
+            <div className="sd-download-tabs">
+              <button
+                className={`sd-download-tab ${downloadTab === 'end-user' ? 'active' : ''}`}
+                type="button"
+                onClick={() => setDownloadTab('end-user')}
+              >
+                Phân phối end-user
+              </button>
+              <button
+                className={`sd-download-tab ${downloadTab === 'scripts' ? 'active' : ''}`}
+                type="button"
+                onClick={() => setDownloadTab('scripts')}
+              >
+                Nội bộ / nâng cao
+              </button>
+            </div>
+
+            {downloadTab === 'end-user' ? (
+              <section className="sd-install-section" aria-label="Desktop downloads">
+                <div className="sd-install-section-head">
+                  <div>
+                    <p className="sd-install-kicker">Phân phối end-user</p>
+                    <h3>Tải desktop app</h3>
+                    <p className="sd-install-section-copy">
+                      Ưu tiên direct download cho người dùng cuối. Route public
+                      `/#/download` dùng cùng release catalog để luôn hiển thị
+                      đúng installer trên GitHub Releases.
+                    </p>
+                  </div>
+
+                  <div className="sd-install-section-actions">
+                    <Link className="sd-release-link" to={DOWNLOAD_ROUTE}>
+                      Mở trang tải app
+                    </Link>
+                  </div>
                 </div>
 
-                <div className="sd-install-section-actions">
-                  <Link className="sd-release-link" to={DOWNLOAD_ROUTE}>
-                    Mở trang tải app
-                  </Link>
-                </div>
-              </div>
+                {renderReleaseStatusBanner()}
 
-              {renderReleaseStatusBanner()}
+                <div className="sd-install-grid">
+                  {(releaseCatalog?.groups ?? []).map((group) => {
+                    const isCurrent = group.family === currentPlatform
 
-              <div className="sd-install-grid">
-                {(releaseCatalog?.groups ?? []).map((group) => {
-                  const isCurrent = group.family === currentPlatform
-
-                  return (
-                    <div key={group.id} className={`sd-install-card ${isCurrent ? 'highlighted' : ''}`}>
-                      <div className="sd-install-card-head">
-                        <div className="sd-install-card-title">
-                          <span className="sd-install-os-icon" aria-hidden="true">
-                            <PlatformIcon platform={group.id} />
-                          </span>
-                          <div>
-                            <h4>{group.platformLabel}</h4>
-                            {isCurrent ? <span className="sd-install-current-badge">Thiết bị hiện tại</span> : null}
+                    return (
+                      <div key={group.id} className={`sd-install-card ${isCurrent ? 'highlighted' : ''}`}>
+                        <div className="sd-install-card-head">
+                          <div className="sd-install-card-title">
+                            <span className="sd-install-os-icon" aria-hidden="true">
+                              <PlatformIcon platform={group.id} />
+                            </span>
+                            <div>
+                              <h4>{group.platformLabel}</h4>
+                              {isCurrent ? <span className="sd-install-current-badge">Thiết bị hiện tại</span> : null}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="sd-install-variants">
-                        {group.variants.map((variant) =>
-                          variant.status === 'ready' && variant.browserDownloadUrl ? (
-                            <a
-                              key={variant.id}
-                              href={variant.browserDownloadUrl}
-                              className="sd-install-variant-link ready"
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              <span>{variant.label}</span>
-                              <Download size={16} />
-                            </a>
-                          ) : (
-                            <span key={variant.id} className="sd-install-variant-link missing">
-                              <span>{variant.label}</span>
-                              <span className="sd-variant-status-text">Chưa sẵn sàng</span>
-                            </span>
-                          )
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </section>
-
-            <section className="sd-install-section" aria-label="Install scripts">
-              <div className="sd-install-section-head">
-                <div>
-                  <p className="sd-install-kicker">Nội bộ / nâng cao</p>
-                  <h3>Script cài đặt từ GitHub Releases</h3>
-                  <p className="sd-install-section-copy">
-                    Giữ lại cho vận hành nội bộ hoặc các tình huống cần script
-                    cài đặt có sẵn quyền quản trị.
-                  </p>
-                </div>
-              </div>
-
-              <div className="sd-install-grid">
-                {INSTALL_SCRIPT_SNIPPETS.map((installScript) => {
-                  const isCopied = copiedScriptId === installScript.id
-
-                  return (
-                    <button
-                      key={installScript.id}
-                      className={`sd-install-card sd-install-card-btn ${isCopied ? 'copied' : ''}`}
-                      type="button"
-                      onClick={() => {
-                        void handleCopyInstallScript(
-                          installScript.id,
-                          installScript.script,
-                        )
-                      }}
-                      aria-label={`Sao chép script cài đặt cho ${installScript.platform}`}
-                    >
-                      <div className="sd-install-card-head">
-                        <div className="sd-install-card-title">
-                          <span className="sd-install-os-icon" aria-hidden="true">
-                            <PlatformIcon
-                              platform={platformForInstallScript(installScript.platform)}
-                            />
-                          </span>
-                          <h4>{installScript.platform}</h4>
-                          <p>{installScript.summary}</p>
+                        <div className="sd-install-variants">
+                          {group.variants.map((variant) =>
+                            variant.status === 'ready' && variant.browserDownloadUrl ? (
+                              <a
+                                key={variant.id}
+                                href={variant.browserDownloadUrl}
+                                className="sd-install-variant-link ready"
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                <span>{variant.label}</span>
+                                <Download size={16} />
+                              </a>
+                            ) : (
+                              <span key={variant.id} className="sd-install-variant-link missing">
+                                <span>{variant.label}</span>
+                                <span className="sd-variant-status-text">Chưa sẵn sàng</span>
+                              </span>
+                            )
+                          )}
                         </div>
-                        <span className="sd-install-card-icon" aria-hidden="true">
-                          {isCopied ? <Check size={20} /> : <CodeXml size={20} />}
-                        </span>
                       </div>
-                      <span className="sd-install-card-hint">
-                        {isCopied ? 'Đã sao chép vào clipboard' : 'Nhấn để sao chép script'}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-            </section>
+                    )
+                  })}
+                </div>
+              </section>
+            ) : (
+              <section className="sd-install-section" aria-label="Install scripts">
+                <div className="sd-install-section-head">
+                  <div>
+                    <p className="sd-install-kicker">Nội bộ / nâng cao</p>
+                    <h3>Script cài đặt từ GitHub Releases</h3>
+                    <p className="sd-install-section-copy">
+                      Giữ lại cho vận hành nội bộ hoặc các tình huống cần script
+                      cài đặt có sẵn quyền quản trị.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="sd-install-grid">
+                  {INSTALL_SCRIPT_SNIPPETS.map((installScript) => {
+                    const isCopied = copiedScriptId === installScript.id
+
+                    return (
+                      <button
+                        key={installScript.id}
+                        className={`sd-install-card sd-install-card-btn ${isCopied ? 'copied' : ''}`}
+                        type="button"
+                        onClick={() => {
+                          void handleCopyInstallScript(
+                            installScript.id,
+                            installScript.script,
+                          )
+                        }}
+                        aria-label={`Sao chép script cài đặt cho ${installScript.platform}`}
+                      >
+                        <div className="sd-install-card-head">
+                          <div className="sd-install-card-title">
+                            <span className="sd-install-os-icon" aria-hidden="true">
+                              <PlatformIcon
+                                platform={platformForInstallScript(installScript.platform)}
+                              />
+                            </span>
+                            <h4>{installScript.platform}</h4>
+                            <p>{installScript.summary}</p>
+                          </div>
+                          <span className="sd-install-card-icon" aria-hidden="true">
+                            {isCopied ? <Check size={20} /> : <CodeXml size={20} />}
+                          </span>
+                        </div>
+                        <span className="sd-install-card-hint">
+                          {isCopied ? 'Đã sao chép vào clipboard' : 'Nhấn để sao chép script'}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </section>
+            )}
           </div>
         )
     }

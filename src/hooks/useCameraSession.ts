@@ -114,6 +114,9 @@ export function useCameraSession({
           audio: false,
           video: {
             deviceId: { exact: deviceId },
+            width: { ideal: 4096 },
+            height: { ideal: 3072 },
+            facingMode: 'user',
           },
         })
 

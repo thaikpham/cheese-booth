@@ -1121,6 +1121,40 @@ select.sd-input {
   max-height: 100%;
 }
 
+.sd-download-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.sd-download-tab {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--muted-fg);
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    border-color 150ms ease;
+}
+
+.sd-download-tab:hover:not(.active) {
+  border-color: var(--accent);
+  color: var(--fg);
+}
+
+.sd-download-tab.active {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: #fff;
+}
+
 .sd-download-panel .sd-install-section {
   background:
     linear-gradient(180deg, rgba(103, 118, 255, 0.05), rgba(255, 255, 255, 0.9)),
