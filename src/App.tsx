@@ -1,9 +1,11 @@
 import './index.css'
 
 import cheeseLogo from '../cheese_icon_transparent.svg'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 import { CaptureScreen } from './components/CaptureScreen'
+import { DownloadPage } from './components/DownloadPage'
+import { LandingPage } from './components/LandingPage'
 import { SettingsDashboard } from './components/SettingsDashboard'
 import { useKioskBootstrap } from './hooks/useKioskBootstrap'
 import { useKioskController } from './hooks/useKioskController'
@@ -12,8 +14,9 @@ import { APP_NAME, APP_SUBTITLE } from './lib/branding'
 
 const CAPTURE_ROUTE = '/capture'
 const SETTINGS_ROUTE = '/settings'
+const DOWNLOAD_ROUTE = '/download'
 
-function App() {
+function KioskShell() {
   const {
     settings,
     settingsReady,
@@ -25,7 +28,6 @@ function App() {
     previewCanvasRef,
     videoRef,
     chooseOutputDir,
-    setOutputDirPath,
     openCapture,
     refreshSources,
     retryPermission,
@@ -61,7 +63,7 @@ function App() {
   }
 
   return (
-    <main className="app-shell">
+    <>
       <Routes>
         <Route
           path={CAPTURE_ROUTE}
@@ -71,6 +73,7 @@ function App() {
               sources={sources}
               permissionState={session.permissionState}
               streamState={session.streamState}
+              lastError={session.lastError}
               isBusy={isBusy}
               countdownValue={countdownValue}
               previewFrameRef={previewFrameRef}
@@ -106,7 +109,6 @@ function App() {
               onFlipHorizontal={toggleFlipHorizontal}
               onFlipVertical={toggleFlipVertical}
               onPickOutputDir={chooseOutputDir}
-              onOutputDirChange={setOutputDirPath}
               onRetryPermission={() => {
                 void retryPermission()
               }}
@@ -120,6 +122,20 @@ function App() {
       </Routes>
 
       <video ref={videoRef} className="hidden-video" autoPlay muted playsInline />
+    </>
+  )
+}
+
+function App() {
+  const location = useLocation()
+
+  if (location.pathname === '/') {
+    return <LandingPage />
+  }
+
+  return (
+    <main className="app-shell">
+      {location.pathname === DOWNLOAD_ROUTE ? <DownloadPage /> : <KioskShell />}
     </main>
   )
 }

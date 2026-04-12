@@ -19,6 +19,7 @@ interface CaptureScreenProps {
   sources: SourceDescriptor[]
   permissionState: PermissionState
   streamState: StreamState
+  lastError: string | null
   isBusy: boolean
   countdownValue: number | null
   previewFrameRef: RefObject<HTMLDivElement | null>
@@ -33,6 +34,7 @@ export function CaptureScreen({
   sources,
   permissionState,
   streamState,
+  lastError,
   isBusy,
   countdownValue,
   previewFrameRef,
@@ -94,7 +96,9 @@ export function CaptureScreen({
                 previewFrameRef={previewFrameRef}
                 previewCanvasRef={previewCanvasRef}
                 permissionState={permissionState}
+                streamState={streamState}
                 sourceUnavailable={sourceUnavailable}
+                lastError={lastError}
                 countdownValue={countdownValue}
                 onRetryPermission={onRetryPermission}
                 onRefreshSources={onRefreshSources}

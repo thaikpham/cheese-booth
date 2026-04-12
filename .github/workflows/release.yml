@@ -31,6 +31,12 @@ jobs:
             rustTargets: 'aarch64-pc-windows-msvc'
 
     runs-on: ${{ matrix.platform }}
+    env:
+      HAS_APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE != '' && secrets.APPLE_CERTIFICATE_PASSWORD != '' && secrets.KEYCHAIN_PASSWORD != '' }}
+      HAS_WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE != '' && secrets.WINDOWS_CERTIFICATE_PASSWORD != '' && vars.WINDOWS_CERTIFICATE_THUMBPRINT != '' }}
+      WINDOWS_CERTIFICATE_THUMBPRINT: ${{ vars.WINDOWS_CERTIFICATE_THUMBPRINT }}
+      WINDOWS_DIGEST_ALGORITHM: ${{ vars.WINDOWS_DIGEST_ALGORITHM || 'sha256' }}
+      WINDOWS_TIMESTAMP_URL: ${{ vars.WINDOWS_TIMESTAMP_URL || 'http://timestamp.digicert.com' }}
 
     steps:
       - name: Checkout repository
@@ -56,14 +62,80 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Import Apple Developer Certificate
+        if: runner.os == 'macOS' && env.HAS_APPLE_CERTIFICATE == 'true'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          CERTIFICATE_PATH="$RUNNER_TEMP/apple-certificate.p12"
+          echo "$APPLE_CERTIFICATE" | base64 --decode > "$CERTIFICATE_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security set-keychain-settings -t 3600 -u build.keychain
+          security import "$CERTIFICATE_PATH" -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+          security find-identity -v -p codesigning build.keychain
+
+      - name: Resolve Apple Signing Identity
+        if: runner.os == 'macOS' && env.HAS_APPLE_CERTIFICATE == 'true'
+        run: |
+          CERT_ID="$(security find-identity -v -p codesigning build.keychain | grep -E 'Developer ID Application|Apple Distribution' | head -n 1 | awk -F'"' '{print $2}')"
+
+          if [ -z "$CERT_ID" ]; then
+            CERT_ID="$(security find-identity -v -p codesigning build.keychain | head -n 1 | awk -F'"' '{print $2}')"
+          fi
+
+          if [ -z "$CERT_ID" ]; then
+            echo "No macOS signing identity found in build.keychain."
+            exit 1
+          fi
+
+          echo "APPLE_SIGNING_IDENTITY=$CERT_ID" >> "$GITHUB_ENV"
+
+      - name: Import Windows signing certificate
+        if: runner.os == 'Windows' && env.HAS_WINDOWS_CERTIFICATE == 'true'
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $certificateDir = Join-Path $env:RUNNER_TEMP "windows-certificate"
+          New-Item -ItemType Directory -Force -Path $certificateDir | Out-Null
+
+          $tempCertPath = Join-Path $certificateDir "certificate-base64.txt"
+          $pfxPath = Join-Path $certificateDir "certificate.pfx"
+
+          Set-Content -Path $tempCertPath -Value $env:WINDOWS_CERTIFICATE
+          certutil -decode $tempCertPath $pfxPath
+          Remove-Item $tempCertPath -Force
+
+          $securePassword = ConvertTo-SecureString -String $env:WINDOWS_CERTIFICATE_PASSWORD -Force -AsPlainText
+          Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $securePassword | Out-Null
+
       - name: Build and publish Tauri bundles
         uses: tauri-apps/tauri-action@v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ env.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          WINDOWS_CERTIFICATE_THUMBPRINT: ${{ env.WINDOWS_CERTIFICATE_THUMBPRINT }}
+          WINDOWS_DIGEST_ALGORITHM: ${{ env.WINDOWS_DIGEST_ALGORITHM }}
+          WINDOWS_TIMESTAMP_URL: ${{ env.WINDOWS_TIMESTAMP_URL }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'ColorLab V2 Photo Kiosk ${{ github.ref_name }}'
-          releaseBody: 'Installer assets for ${{ github.ref_name }} are attached below.'
+          releaseBody: |
+            Installer assets for ${{ github.ref_name }} are attached below.
+
+            End-user download surface: https://cheesebooth.vercel.app/#/download
           releaseDraft: false
           generateReleaseNotes: true
           prerelease: false

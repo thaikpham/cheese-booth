@@ -83,6 +83,37 @@ export function useKioskFullscreen(settingsReady: boolean): void {
       window.removeEventListener('keydown', requestOnce)
     }
 
+    const queueBrowserRetry = () => {
+      window.addEventListener('pointerdown', requestOnce, { once: true })
+      window.addEventListener('keydown', requestOnce, { once: true })
+    }
+
+    const handleWindowFocus = () => {
+      if (disposed) return
+
+      if (isTauriRuntime()) {
+        void enforceDesktopFullscreen()
+        return
+      }
+
+      if (!document.fullscreenElement) {
+        queueBrowserRetry()
+      }
+    }
+
+    const handleVisibilityChange = () => {
+      if (disposed || document.visibilityState !== 'visible') return
+      handleWindowFocus()
+    }
+
+    const handleBrowserFullscreenChange = () => {
+      if (disposed || isTauriRuntime()) return
+
+      if (!document.fullscreenElement) {
+        queueBrowserRetry()
+      }
+    }
+
     async function enterFullscreen(): Promise<void> {
       if (isTauriRuntime()) {
         const enteredDesktopFullscreen = await enforceDesktopFullscreen()
@@ -98,14 +129,19 @@ export function useKioskFullscreen(settingsReady: boolean): void {
         return
       }
 
-      window.addEventListener('pointerdown', requestOnce, { once: true })
-      window.addEventListener('keydown', requestOnce, { once: true })
+      queueBrowserRetry()
     }
 
+    window.addEventListener('focus', handleWindowFocus)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    document.addEventListener('fullscreenchange', handleBrowserFullscreenChange)
     void enterFullscreen()
 
     return () => {
       disposed = true
+      window.removeEventListener('focus', handleWindowFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      document.removeEventListener('fullscreenchange', handleBrowserFullscreenChange)
       window.removeEventListener('pointerdown', requestOnce)
       window.removeEventListener('keydown', requestOnce)
     }

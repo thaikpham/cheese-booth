@@ -4,21 +4,80 @@ import type {
   TransformSettings,
 } from '../types'
 
+const PERMISSION_DENIED_ERROR_NAMES = new Set([
+  'NotAllowedError',
+  'PermissionDeniedError',
+  'SecurityError',
+])
+
+const MISSING_DEVICE_ERROR_NAMES = new Set([
+  'DevicesNotFoundError',
+  'NotFoundError',
+  'OverconstrainedError',
+])
+
+const RECOVERABLE_STREAM_ERROR_NAMES = new Set([
+  'AbortError',
+  'NotReadableError',
+  'TrackStartError',
+])
+
+function getErrorName(error: unknown): string {
+  return error instanceof Error ? error.name : ''
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : ''
+}
+
+export function supportsCameraAccess(): boolean {
+  if (typeof navigator === 'undefined') {
+    return false
+  }
+
+  return (
+    typeof navigator.mediaDevices?.getUserMedia === 'function' &&
+    typeof navigator.mediaDevices?.enumerateDevices === 'function'
+  )
+}
+
+export function isPermissionDeniedMediaError(error: unknown): boolean {
+  return PERMISSION_DENIED_ERROR_NAMES.has(getErrorName(error))
+}
+
+export function isMissingDeviceMediaError(error: unknown): boolean {
+  return MISSING_DEVICE_ERROR_NAMES.has(getErrorName(error))
+}
+
+export function isRecoverableMediaStreamError(error: unknown): boolean {
+  return RECOVERABLE_STREAM_ERROR_NAMES.has(getErrorName(error))
+}
+
 export function getMediaErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.name === 'NotAllowedError') {
+  if (isPermissionDeniedMediaError(error)) {
     return 'Bạn đã từ chối quyền truy cập camera.'
   }
 
-  if (error instanceof Error && error.name === 'NotFoundError') {
+  if (isMissingDeviceMediaError(error)) {
     return 'Không tìm thấy nguồn camera phù hợp.'
   }
 
-  if (error instanceof Error && error.name === 'NotReadableError') {
+  if (getErrorName(error) === 'NotReadableError') {
     return 'Nguồn camera đang bị ứng dụng khác chiếm dụng.'
   }
 
-  if (error instanceof Error && error.message) {
-    return error.message
+  const message = getErrorMessage(error)
+
+  if (/scope|not allowed/i.test(message)) {
+    return 'Thư mục lưu không còn quyền truy cập. Hãy chọn lại thư mục.'
+  }
+
+  if (/permission denied|read-only|readonly/i.test(message)) {
+    return 'Không thể ghi vào thư mục đã chọn. Hãy chọn thư mục khác.'
+  }
+
+  if (message) {
+    return message
   }
 
   return 'Không thể truy cập camera.'

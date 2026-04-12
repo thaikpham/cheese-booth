@@ -24,7 +24,6 @@ interface UseCaptureActionsResult {
   isBusy: boolean
   countdownValue: number | null
   chooseOutputDir: () => Promise<string | null>
-  setOutputDirPath: (outputDir: string) => void
   handleShutter: () => Promise<boolean>
   setMode: (captureMode: CaptureMode) => void
   setCountdown: (countdownSec: CountdownSec) => void
@@ -70,19 +69,6 @@ export function useCaptureActions({
 
       return null
     }
-  }
-
-  function setOutputDirPath(outputDir: string): void {
-    const normalized = outputDir.trim()
-
-    setSettings((current) => ({
-      ...current,
-      outputDir: normalized || null,
-    }))
-    setSession((current) => ({
-      ...current,
-      lastError: null,
-    }))
   }
 
   async function runCountdown(): Promise<void> {
@@ -164,7 +150,6 @@ export function useCaptureActions({
     isBusy,
     countdownValue,
     chooseOutputDir,
-    setOutputDirPath,
     handleShutter,
     setMode: (captureMode: CaptureMode) => updateSettings({ captureMode }),
     setCountdown: (countdownSec: CountdownSec) => updateSettings({ countdownSec }),

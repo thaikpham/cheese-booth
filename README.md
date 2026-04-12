@@ -46,7 +46,7 @@ Release flow:
 2. Commit the change to `main`.
 3. Create a tag like `v0.1.0`.
 4. Push `main` and the tag to GitHub.
-5. GitHub Actions creates a draft release and uploads the desktop installers/bundles.
+5. GitHub Actions publishes the release and uploads the desktop installers/bundles.
 
 Example:
 
@@ -60,11 +60,59 @@ git push origin v0.1.0
 
 The workflow file lives at `.github/workflows/release.yml`.
 
-Internal distribution now uses one installer script per OS:
+End-user distribution now has two surfaces that read from the same latest release metadata:
+
+- Public download page: `/#/download`
+- Internal settings route: `/#/settings`
+
+Internal distribution also keeps one installer script per OS:
 
 - `macOS`: auto-detects Apple Silicon or Intel and installs the matching `.dmg`
 - `Windows 11`: auto-detects x64 or ARM64 and installs the matching `.msi`
 - `Linux`: auto-detects `apt-get` or `dnf` on supported x64 distributions and installs the matching `.deb` or `.rpm`
+
+### Release Trust Modes
+
+The release workflow is intentionally staged:
+
+- Phase 1: publish direct-download installers from GitHub Releases, with honest UI copy that unsigned builds may trigger OS warnings.
+- Phase 2: enable macOS signing/notarization and Windows signing by adding the required CI secrets and variables.
+
+The repo is already wired for optional signing:
+
+- macOS signing/notarization is activated when the Apple secrets are present.
+- Windows signing is activated when the Windows certificate secrets and thumbprint variable are present.
+- If those credentials are missing, the workflow still builds and publishes unsigned installers.
+
+Ready-to-fill setup docs:
+
+- Checklist: [docs/github-actions-trusted-release-checklist.md](./docs/github-actions-trusted-release-checklist.md)
+- Secrets template: [docs/github-actions-secrets.template.env](./docs/github-actions-secrets.template.env)
+- Variables template: [docs/github-actions-variables.template.env](./docs/github-actions-variables.template.env)
+
+### Secrets And Variables For Trusted Desktop Releases
+
+macOS secrets:
+
+- `APPLE_CERTIFICATE`: base64-encoded `.p12` signing certificate
+- `APPLE_CERTIFICATE_PASSWORD`: password for the exported `.p12`
+- `KEYCHAIN_PASSWORD`: temporary keychain password used in GitHub Actions
+- `APPLE_ID`: Apple account email used for notarization
+- `APPLE_PASSWORD`: app-specific password for notarization
+- `APPLE_TEAM_ID`: Apple team identifier
+
+Windows secrets:
+
+- `WINDOWS_CERTIFICATE`: base64-encoded `.pfx` certificate
+- `WINDOWS_CERTIFICATE_PASSWORD`: password for the exported `.pfx`
+
+Windows repository variables:
+
+- `WINDOWS_CERTIFICATE_THUMBPRINT`: thumbprint of the imported certificate
+- `WINDOWS_DIGEST_ALGORITHM`: usually `sha256`
+- `WINDOWS_TIMESTAMP_URL`: timestamp server URL, for example `http://timestamp.digicert.com`
+
+Windows signing is performed by the custom command in `src-tauri/tauri.windows.conf.json`, which calls `src-tauri/scripts/sign-windows.ps1`.
 
 ### Release Checklist For `v0.1.4`
 
@@ -76,6 +124,7 @@ Internal distribution now uses one installer script per OS:
 2. Verify installer script patterns still match the workflow asset naming:
    - Workflow asset pattern: `colorlabv2-photokiosk-[platform]-[arch][ext]`
    - Installer snippets source: `src/lib/installScripts.ts`
+   - Release catalog source: `src/lib/releaseCatalog.ts`
 3. Run validation before tagging:
 
 ```bash
@@ -111,13 +160,22 @@ git push origin v0.1.4
    - Windows ARM64: `.msi`
    - Ubuntu x64: `.deb`
    - Fedora x64: `.rpm`
+8. Confirm end-user download route resolves the latest release correctly:
+   - `/#/download`
+   - each card links to the expected asset
+   - macOS / Windows warning copy still matches the actual signing state
 
 ## Downloading The App
 
-End users should download the installer from the repository's `Releases` page, not run the project from source.
+End users should download the installer from the public download page or the repository's `Releases` page, not run the project from source.
+
+Primary download surface:
+
+- Public page: `/#/download`
 
 Recommended distribution path:
 
-- Windows: `.msi` or `.exe`
-- macOS: `.dmg` or `.app.tar.gz`
-- Linux: `.AppImage`, `.deb`, or `.rpm`
+- Windows: `.msi`
+- macOS: `.dmg`
+- Linux Ubuntu/Debian: `.deb`
+- Linux Fedora/RHEL: `.rpm`

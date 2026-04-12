@@ -14,6 +14,10 @@ export interface RenderedCapture {
   extension: string
 }
 
+type SampledFrame = CanvasImageSource & {
+  close?: () => void
+}
+
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => {
     window.setTimeout(resolve, ms)
@@ -259,6 +263,25 @@ function pickRecorderMimeType(): { mimeType: string; extension: string } {
   }
 }
 
+async function cloneSampleFrame(canvas: HTMLCanvasElement): Promise<SampledFrame> {
+  if (typeof createImageBitmap === 'function') {
+    return createImageBitmap(canvas)
+  }
+
+  const clonedCanvas = document.createElement('canvas')
+  const clonedContext = clonedCanvas.getContext('2d')
+
+  if (!clonedContext) {
+    throw new Error('Không thể sao chép frame boomerang.')
+  }
+
+  clonedCanvas.width = canvas.width
+  clonedCanvas.height = canvas.height
+  clonedContext.drawImage(canvas, 0, 0)
+
+  return clonedCanvas
+}
+
 export async function renderBoomerangFromVideo(
   video: HTMLVideoElement,
   transform: TransformSettings,
@@ -283,7 +306,7 @@ export async function renderBoomerangFromVideo(
   sampleCanvas.width = output.width
   sampleCanvas.height = output.height
 
-  const sampledFrames: ImageBitmap[] = []
+  const sampledFrames: SampledFrame[] = []
   const frameInterval = 1000 / BOOMERANG_FPS
   const totalFrames = Math.max(1, Math.round(BOOMERANG_DURATION_MS / frameInterval))
   const sampleStart = performance.now()
@@ -306,7 +329,7 @@ export async function renderBoomerangFromVideo(
       transform,
     )
 
-    sampledFrames.push(await createImageBitmap(sampleCanvas))
+    sampledFrames.push(await cloneSampleFrame(sampleCanvas))
   }
 
   if (sampledFrames.length === 0) {
@@ -318,12 +341,22 @@ export async function renderBoomerangFromVideo(
   const playbackContext = playbackCanvas.getContext('2d')
 
   if (!playbackContext) {
-    sampledFrames.forEach((frame) => frame.close())
+    sampledFrames.forEach((frame) => frame.close?.())
     throw new Error('Không thể khởi tạo canvas xuất boomerang.')
   }
 
   playbackCanvas.width = output.width
   playbackCanvas.height = output.height
+
+  if (typeof playbackCanvas.captureStream !== 'function') {
+    sampledFrames.forEach((frame) => frame.close?.())
+    throw new Error('Runtime hiện tại chưa hỗ trợ ghi boomerang.')
+  }
+
+  if (typeof MediaRecorder === 'undefined') {
+    sampledFrames.forEach((frame) => frame.close?.())
+    throw new Error('Runtime hiện tại chưa hỗ trợ ghi boomerang.')
+  }
 
   const stream = playbackCanvas.captureStream(BOOMERANG_FPS)
   const { mimeType, extension } = pickRecorderMimeType()
@@ -368,7 +401,7 @@ export async function renderBoomerangFromVideo(
 
   const blob = await finishedBlob
 
-  sampledFrames.forEach((frame) => frame.close())
+  sampledFrames.forEach((frame) => frame.close?.())
 
   return {
     blob,

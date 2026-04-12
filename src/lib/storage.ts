@@ -1,5 +1,5 @@
 import { open } from '@tauri-apps/plugin-dialog'
-import { mkdir, writeFile } from '@tauri-apps/plugin-fs'
+import { mkdir, remove, writeFile } from '@tauri-apps/plugin-fs'
 import { join } from '@tauri-apps/api/path'
 
 import type { CaptureMode } from '../types'
@@ -7,6 +7,28 @@ import { BROWSER_DOWNLOADS_LABEL, isTauriRuntime } from './runtime'
 
 const DESKTOP_SAVE_REQUIRED_MESSAGE =
   'Lưu vào thư mục local chỉ hỗ trợ trong ứng dụng desktop Tauri. Nếu đang mở bằng trình duyệt, hãy chạy bản desktop.'
+const OUTPUT_DIR_PROBE_PREFIX = '.cheese-booth-write-test-'
+
+export async function verifyOutputDirectoryAccess(outputDir: string): Promise<void> {
+  const normalized = outputDir.trim()
+
+  if (!normalized) {
+    throw new Error('Chưa chọn thư mục lưu media.')
+  }
+
+  if (!isTauriRuntime()) {
+    return
+  }
+
+  const probePath = await join(
+    normalized,
+    `${OUTPUT_DIR_PROBE_PREFIX}${Date.now()}.tmp`,
+  )
+  const probeBytes = new TextEncoder().encode('cheese-booth-write-check')
+
+  await writeFile(probePath, probeBytes)
+  await remove(probePath)
+}
 
 export async function pickOutputDirectory(
   currentPath?: string | null,
@@ -23,7 +45,13 @@ export async function pickOutputDirectory(
     defaultPath: currentPath ?? undefined,
   })
 
-  return typeof selected === 'string' ? selected : null
+  if (typeof selected !== 'string') {
+    return null
+  }
+
+  await verifyOutputDirectoryAccess(selected)
+
+  return selected
 }
 
 function formatDateFolder(date: Date): string {

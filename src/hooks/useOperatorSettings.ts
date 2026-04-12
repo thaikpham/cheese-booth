@@ -1,5 +1,6 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 
+import { verifyOutputDirectoryAccess } from '../lib/storage'
 import { loadOperatorSettings, saveOperatorSettings } from '../lib/settingsStore'
 import { DEFAULT_OPERATOR_SETTINGS, type OperatorSettings } from '../types'
 
@@ -17,11 +18,33 @@ export function useOperatorSettings(): UseOperatorSettingsResult {
   useEffect(() => {
     let active = true
 
-    void loadOperatorSettings().then((loaded) => {
+    void (async () => {
+      const loaded = await loadOperatorSettings()
+
       if (!active) return
-      setSettings(loaded)
+
+      let verifiedSettings = loaded
+
+      if (loaded.outputDir) {
+        try {
+          await verifyOutputDirectoryAccess(loaded.outputDir)
+        } catch (error) {
+          console.warn(
+            'Thu muc luu da luu truoc do khong con hop le, se yeu cau chon lai.',
+            error,
+          )
+          verifiedSettings = {
+            ...loaded,
+            outputDir: null,
+          }
+        }
+      }
+
+      if (!active) return
+
+      setSettings(verifiedSettings)
       setSettingsReady(true)
-    })
+    })()
 
     return () => {
       active = false

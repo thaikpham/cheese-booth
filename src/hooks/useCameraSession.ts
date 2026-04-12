@@ -17,8 +17,12 @@ import {
 } from '../types'
 import {
   getMediaErrorMessage,
+  isMissingDeviceMediaError,
+  isPermissionDeniedMediaError,
+  isRecoverableMediaStreamError,
   pickBestDeviceId,
   safeStopStream,
+  supportsCameraAccess,
   toSourceDescriptor,
 } from './kioskControllerUtils'
 
@@ -61,6 +65,10 @@ export function useCameraSession({
     }
   }, [videoRef])
 
+  const syncMissingDeviceState = useEffectEvent(() => {
+    void refreshSourcesInternal(true, true)
+  })
+
   useEffect(() => {
     let cancelled = false
 
@@ -68,7 +76,10 @@ export function useCameraSession({
       void releaseStream(streamRef.current)
       setSession((current) => ({
         ...current,
-        streamState: 'idle',
+        streamState:
+          current.streamState === 'error' || current.streamState === 'missing-device'
+            ? current.streamState
+            : 'idle',
       }))
       return
     }
@@ -85,6 +96,16 @@ export function useCameraSession({
     const deviceId = settings.deviceId
 
     async function startStream(): Promise<void> {
+      if (!supportsCameraAccess()) {
+        setSession((current) => ({
+          ...current,
+          permissionState: 'unknown',
+          streamState: 'error',
+          lastError: 'Runtime hiện tại không hỗ trợ camera.',
+        }))
+        return
+      }
+
       setSession((current) => ({ ...current, streamState: 'starting' }))
       await releaseStream(streamRef.current)
 
@@ -116,10 +137,35 @@ export function useCameraSession({
       } catch (error) {
         if (cancelled) return
 
+        const lastError = getMediaErrorMessage(error)
+
+        if (isPermissionDeniedMediaError(error)) {
+          setSession((current) => ({
+            ...current,
+            permissionState: 'denied',
+            streamState: 'idle',
+            lastError,
+          }))
+          return
+        }
+
+        if (isMissingDeviceMediaError(error)) {
+          setSession((current) => ({
+            ...current,
+            permissionState: 'granted',
+            streamState: 'missing-device',
+            lastError,
+          }))
+          syncMissingDeviceState()
+          return
+        }
+
         setSession((current) => ({
           ...current,
+          permissionState:
+            isRecoverableMediaStreamError(error) ? 'granted' : current.permissionState,
           streamState: 'error',
-          lastError: getMediaErrorMessage(error),
+          lastError,
         }))
       }
     }
@@ -138,6 +184,17 @@ export function useCameraSession({
   }, [releaseStream, videoRef])
 
   async function ensurePermission(): Promise<boolean> {
+    if (!supportsCameraAccess()) {
+      setSession((current) => ({
+        ...current,
+        permissionState: 'unknown',
+        streamState: 'error',
+        lastError: 'Runtime hiện tại không hỗ trợ camera.',
+      }))
+
+      return false
+    }
+
     try {
       const probe = await navigator.mediaDevices.getUserMedia({
         audio: false,
@@ -154,11 +211,27 @@ export function useCameraSession({
 
       return true
     } catch (error) {
+      const lastError = getMediaErrorMessage(error)
+
+      if (isPermissionDeniedMediaError(error)) {
+        setSession((current) => ({
+          ...current,
+          permissionState: 'denied',
+          streamState: 'idle',
+          lastError,
+        }))
+
+        return false
+      }
+
       setSession((current) => ({
         ...current,
-        permissionState: 'denied',
-        streamState: 'idle',
-        lastError: getMediaErrorMessage(error),
+        permissionState:
+          isMissingDeviceMediaError(error) || isRecoverableMediaStreamError(error)
+            ? 'granted'
+            : 'unknown',
+        streamState: isMissingDeviceMediaError(error) ? 'missing-device' : 'error',
+        lastError,
       }))
 
       return false
@@ -169,6 +242,15 @@ export function useCameraSession({
     isDeviceChange = false,
     hasPermission = session.permissionState === 'granted',
   ): Promise<void> {
+    if (!supportsCameraAccess()) {
+      setSession((current) => ({
+        ...current,
+        streamState: 'error',
+        lastError: 'Runtime hiện tại không hỗ trợ camera.',
+      }))
+      return
+    }
+
     if (!hasPermission) {
       return
     }
@@ -233,6 +315,10 @@ export function useCameraSession({
   })
 
   useEffect(() => {
+    if (!supportsCameraAccess() || typeof navigator.mediaDevices.addEventListener !== 'function') {
+      return
+    }
+
     navigator.mediaDevices.addEventListener('devicechange', handleDeviceChange)
 
     return () => {

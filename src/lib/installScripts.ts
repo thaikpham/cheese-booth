@@ -1,3 +1,8 @@
+import {
+  LATEST_RELEASE_API_URL,
+  RELEASE_ASSET_PATTERNS,
+} from './releaseCatalog'
+
 export interface InstallScriptSnippet {
   id: string
   label: string
@@ -5,19 +10,6 @@ export interface InstallScriptSnippet {
   summary: string
   script: string
 }
-
-export interface LatestReleaseStatus {
-  state: 'ready' | 'missing' | 'error'
-  tagName?: string
-  htmlUrl?: string
-}
-
-const REPO_OWNER = 'thaikpham'
-const REPO_NAME = 'colorlabv2-photokiosk'
-const LATEST_RELEASE_API_URL =
-  `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest`
-export const RELEASES_PAGE_URL =
-  `https://github.com/${REPO_OWNER}/${REPO_NAME}/releases`
 
 function buildBashReleaseResolver(): string {
   return String.raw`LATEST_RELEASE_API_URL="${LATEST_RELEASE_API_URL}"
@@ -80,11 +72,11 @@ ARCH="$(uname -m)"
 
 case "$ARCH" in
   arm64|aarch64)
-    ASSET_PATTERN="${REPO_NAME}-(darwin|macos).*(aarch64|arm64).*\.dmg$"
+    ASSET_PATTERN="${RELEASE_ASSET_PATTERNS.macosArm64Dmg}"
     ASSET_DESCRIPTION="DMG macOS Apple Silicon"
     ;;
   x86_64|amd64)
-    ASSET_PATTERN="${REPO_NAME}-(darwin|macos).*(x64|x86_64).*\.dmg$"
+    ASSET_PATTERN="${RELEASE_ASSET_PATTERNS.macosX64Dmg}"
     ASSET_DESCRIPTION="DMG macOS Intel"
     ;;
   *)
@@ -138,12 +130,12 @@ $rawArch = if ($env:PROCESSOR_ARCHITEW6432) {
 
 switch -Regex ($rawArch.ToUpperInvariant()) {
   "^(ARM64|AARCH64)$" {
-    $assetPattern = "${REPO_NAME}-windows.*(arm64|aarch64).*\.msi$"
+    $assetPattern = "${RELEASE_ASSET_PATTERNS.windowsArm64Msi}"
     $assetDescription = "MSI Windows ARM64"
     break
   }
   "^(AMD64|X86_64)$" {
-    $assetPattern = "${REPO_NAME}-windows.*(x64|x86_64).*\.msi$"
+    $assetPattern = "${RELEASE_ASSET_PATTERNS.windowsX64Msi}"
     $assetDescription = "MSI Windows x64"
     break
   }
@@ -191,11 +183,11 @@ case "$ARCH" in
 esac
 
 if command -v apt-get >/dev/null 2>&1; then
-  ASSET_PATTERN="${REPO_NAME}-linux.*(amd64|x86_64|x64).*\.deb$"
+  ASSET_PATTERN="${RELEASE_ASSET_PATTERNS.linuxDeb}"
   ASSET_DESCRIPTION="DEB Ubuntu/Debian x64"
   PACKAGE_EXT="deb"
 elif command -v dnf >/dev/null 2>&1; then
-  ASSET_PATTERN="${REPO_NAME}-linux.*(amd64|x86_64|x64).*\.rpm$"
+  ASSET_PATTERN="${RELEASE_ASSET_PATTERNS.linuxRpm}"
   ASSET_DESCRIPTION="RPM Fedora/RHEL x64"
   PACKAGE_EXT="rpm"
 else
@@ -233,35 +225,4 @@ export function buildCombinedInstallScripts(
   return snippets
     .map((snippet) => [`### ${snippet.platform}`, snippet.script].join('\n\n'))
     .join('\n\n' + '='.repeat(72) + '\n\n')
-}
-
-export async function fetchLatestReleaseStatus(): Promise<LatestReleaseStatus> {
-  try {
-    const response = await fetch(LATEST_RELEASE_API_URL, {
-      headers: {
-        Accept: 'application/vnd.github+json',
-      },
-    })
-
-    if (response.ok) {
-      const payload = (await response.json()) as {
-        tag_name?: string
-        html_url?: string
-      }
-
-      return {
-        state: 'ready',
-        tagName: payload.tag_name,
-        htmlUrl: payload.html_url ?? RELEASES_PAGE_URL,
-      }
-    }
-
-    if (response.status === 404) {
-      return { state: 'missing' }
-    }
-
-    return { state: 'error' }
-  } catch {
-    return { state: 'error' }
-  }
 }

@@ -138,6 +138,27 @@
   padding: 28px 28px 28px 32px;
   overflow-y: auto;
   border-right: 1px solid var(--border);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.sd-controls::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sd-controls::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sd-controls::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.sd-controls::-webkit-scrollbar-thumb:hover {
+  background-color: oklch(0.75 0 0);
 }
 
 /* ── Panel card ── */
@@ -243,6 +264,20 @@
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 16px;
+}
+
+.sd-install-section-copy {
+  max-width: 54ch;
+  margin: 8px 0 0;
+  color: var(--muted-fg);
+  font-size: 0.78rem;
+  line-height: 1.65;
+}
+
+.sd-install-section-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .sd-install-kicker {
@@ -363,6 +398,69 @@
 .sd-install-card-btn.copied {
   background: var(--accent-soft);
   border-color: oklch(0.82 0.08 264);
+}
+
+.sd-install-card.highlighted {
+  border-color: var(--accent);
+  background: linear-gradient(180deg, var(--accent-soft), transparent 80%);
+}
+
+.sd-install-current-badge {
+  display: inline-block;
+  margin-top: 4px;
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.sd-install-variants {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.sd-install-variant-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: calc(var(--radius) - 2px);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--fg);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  font-family: 'IBM Plex Mono', ui-monospace, sans-serif;
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.sd-install-variant-link:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+  box-shadow: 0 4px 12px rgba(27, 31, 35, 0.04);
+  color: var(--accent);
+}
+
+.sd-install-variant-link.missing {
+  background: var(--muted);
+  color: var(--muted-fg);
+  border-color: transparent;
+  pointer-events: none;
+}
+
+.sd-variant-status-text {
+  font-size: 0.72rem;
+  font-weight: 500;
+  opacity: 0.7;
 }
 
 .sd-install-card-head {
@@ -753,6 +851,11 @@
   border-color: var(--accent);
 }
 
+.sd-input[readonly] {
+  background: var(--muted);
+  cursor: text;
+}
+
 .sd-input:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -1017,6 +1120,50 @@ select.sd-input {
   font-size: 0.82rem;
 }
 
+/* ═══════════ DOWNLOAD PANEL ═══════════ */
+
+.sd-download-panel {
+  max-height: 100%;
+}
+
+.sd-download-panel .sd-install-section {
+  background:
+    linear-gradient(180deg, rgba(103, 118, 255, 0.05), rgba(255, 255, 255, 0.9)),
+    var(--card);
+  border-color: var(--border);
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.sd-download-panel .sd-install-section:hover {
+  border-color: oklch(0.8 0.03 264);
+  box-shadow: 0 4px 16px rgba(27, 31, 35, 0.06);
+}
+
+.sd-download-panel .sd-install-grid {
+  gap: 16px;
+}
+
+.sd-download-panel .sd-install-card-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.sd-download-panel .sd-install-card-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent), oklch(0.6 0.14 264));
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.sd-download-panel .sd-install-card-btn:hover::before {
+  opacity: 1;
+}
+
 /* ═══════════ RESPONSIVE ═══════════ */
 
 @media (max-width: 1100px) {
@@ -1124,5 +1271,9 @@ select.sd-input {
     width: 100%;
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .sd-download-panel .sd-install-grid {
+    grid-template-columns: 1fr;
   }
 }
