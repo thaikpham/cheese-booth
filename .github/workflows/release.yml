@@ -69,4 +69,4 @@ jobs:
           prerelease: false
           tauriScript: npm run tauri
           args: ${{ matrix.args }}
-          releaseAssetNamePattern: 'colorlabv2-photokiosk-[platform]-[arch][ext]'
+          assetNamePattern: 'colorlabv2-photokiosk-[platform]-[arch][ext]'
