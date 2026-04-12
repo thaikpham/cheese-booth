@@ -64,7 +64,7 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'ColorLab V2 Photo Kiosk ${{ github.ref_name }}'
           releaseBody: 'Installer assets for ${{ github.ref_name }} are attached below.'
-          releaseDraft: true
+          releaseDraft: false
           generateReleaseNotes: true
           prerelease: false
           tauriScript: npm run tauri
