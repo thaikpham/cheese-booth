@@ -355,8 +355,30 @@
   min-width: 0;
 }
 
+.capture-preview-brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.capture-preview-brand-link:hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+
+.capture-preview-brand-logo {
+  display: block;
+  width: auto;
+  height: 16px;
+  margin-top: -2px; /* optical alignment */
+}
+
 .capture-preview-brand-name {
   color: #E35205;
+  font-weight: 700;
 }
 
 .capture-preview-brand-separator,

@@ -1,5 +1,5 @@
-import type { RefObject } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import cheeseLogo from '../../cheese_icon_transparent.svg'
 
 import type {
   OperatorSettings,
@@ -77,15 +77,24 @@ export function CaptureScreen({
               style={{ '--aspect-ratio': isPortrait ? 3 / 4 : 4 / 3 } as React.CSSProperties}
             >
               <div className="capture-preview-meta" aria-hidden="true">
-                <p className="capture-settings-marquee capture-preview-brand">
-                  <span className="capture-preview-brand-name">
-                    {APP_NAME.toUpperCase()}
-                  </span>
-                  <span className="capture-preview-brand-separator"> · </span>
-                  <span className="capture-preview-brand-subtitle">
-                    {APP_SUBTITLE.toUpperCase()}
-                  </span>
-                </p>
+                <div className="capture-settings-marquee capture-preview-brand">
+                  <Link to="/" className="capture-preview-brand-link">
+                    <img 
+                      src={cheeseLogo} 
+                      alt="" 
+                      className="capture-preview-brand-logo" 
+                      width={24} 
+                      height={18} 
+                    />
+                    <span className="capture-preview-brand-name">
+                      {APP_NAME.toUpperCase()}
+                    </span>
+                    <span className="capture-preview-brand-separator"> · </span>
+                    <span className="capture-preview-brand-subtitle">
+                      {APP_SUBTITLE.toUpperCase()}
+                    </span>
+                  </Link>
+                </div>
                 <p className="capture-settings-marquee capture-preview-marquee">
                   {settingsTelemetryLine}
                 </p>

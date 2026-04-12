@@ -667,13 +667,6 @@ export function SettingsDashboard({
             )
           })}
         </nav>
-
-        <div className="sd-rail-footer">
-          <Link className="sd-rail-back" to={CAPTURE_ROUTE} title="Quay lại chụp">
-            <ArrowLeft size={20} />
-            <span>Quay lại</span>
-          </Link>
-        </div>
       </aside>
 
       {/* ── Controls panel ── */}
@@ -720,6 +713,11 @@ export function SettingsDashboard({
           </div>
         </div>
       </aside>
+
+      {/* ── Floating Back Button ── */}
+      <Link className="sd-floating-back" to={CAPTURE_ROUTE} title="Quay lại chụp">
+        <ArrowLeft size={24} />
+      </Link>
     </section>
   )
 }
