@@ -3,7 +3,7 @@ import { mkdir, writeFile } from '@tauri-apps/plugin-fs'
 import { join } from '@tauri-apps/api/path'
 
 import type { CaptureMode } from '../types'
-import { isTauriRuntime } from './runtime'
+import { BROWSER_DOWNLOADS_LABEL, isTauriRuntime } from './runtime'
 
 const DESKTOP_SAVE_REQUIRED_MESSAGE =
   'Lưu vào thư mục local chỉ hỗ trợ trong ứng dụng desktop Tauri. Nếu đang mở bằng trình duyệt, hãy chạy bản desktop.'
@@ -58,7 +58,21 @@ export async function saveCaptureToOutputDir(
   const fileName = `${kind}-${formatTimestamp(stamp)}.${extension}`
 
   if (!isTauriRuntime()) {
-    throw new Error(DESKTOP_SAVE_REQUIRED_MESSAGE)
+    const objectUrl = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+
+    link.href = objectUrl
+    link.download = fileName
+    link.style.display = 'none'
+    document.body.append(link)
+    link.click()
+    link.remove()
+
+    window.setTimeout(() => {
+      window.URL.revokeObjectURL(objectUrl)
+    }, 1000)
+
+    return `${BROWSER_DOWNLOADS_LABEL}/${fileName}`
   }
 
   const folder = await join(outputDir, category, formatDateFolder(stamp))

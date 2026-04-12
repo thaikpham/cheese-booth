@@ -46,7 +46,7 @@ export function CaptureSideRail({
           <Blend size={28} />
         </button>
         <p className="capture-blend-tooltip" aria-hidden="true">
-          coming soon w. colorlabv2
+          blending for cheese booth coming soon
         </p>
       </div>
     </aside>

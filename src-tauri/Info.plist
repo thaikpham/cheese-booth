@@ -3,6 +3,6 @@
 <plist version="1.0">
 <dict>
   <key>NSCameraUsageDescription</key>
-  <string>Camera access is required for Sony USB Streaming and Imaging Edge Webcam capture.</string>
+  <string>Camera access is required for Cheese Booth capture with Sony USB Streaming and Imaging Edge Webcam.</string>
 </dict>
 </plist>

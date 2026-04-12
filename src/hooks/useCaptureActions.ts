@@ -1,7 +1,9 @@
 import { useState, type Dispatch, type RefObject, type SetStateAction } from 'react'
 
+import { playCountdownCue, playShutterCue } from '../lib/captureSounds'
 import { renderBoomerangFromVideo, renderPhotoFromVideo } from '../lib/media'
 import { pickOutputDirectory, saveCaptureToOutputDir } from '../lib/storage'
+import { getRuntimeEnvironment } from '../lib/runtime'
 import type {
   CaptureMode,
   CountdownSec,
@@ -86,6 +88,11 @@ export function useCaptureActions({
   async function runCountdown(): Promise<void> {
     for (let tick = Number(settings.countdownSec); tick >= 0; tick -= 1) {
       setCountdownValue(tick)
+      if (tick === 0) {
+        void playShutterCue()
+      } else {
+        void playCountdownCue(tick)
+      }
       await new Promise((resolve) => {
         window.setTimeout(resolve, tick === 0 ? 350 : 1000)
       })
@@ -100,11 +107,19 @@ export function useCaptureActions({
     extension: string,
     createdAt: number,
   ): Promise<string> {
-    if (!settings.outputDir) {
+    const runtime = getRuntimeEnvironment(settings.outputDir)
+
+    if (runtime.kind === 'desktop' && !runtime.autoSaveReady) {
       throw new Error('Chưa chọn thư mục lưu media.')
     }
 
-    return saveCaptureToOutputDir(settings.outputDir, kind, blob, extension, createdAt)
+    return saveCaptureToOutputDir(
+      settings.outputDir ?? runtime.outputTargetLabel,
+      kind,
+      blob,
+      extension,
+      createdAt,
+    )
   }
 
   async function captureAndPersist(kind: CaptureMode): Promise<void> {

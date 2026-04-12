@@ -1,5 +1,6 @@
 import './index.css'
 
+import cheeseLogo from '../cheese_icon_transparent.svg'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
 import { CaptureScreen } from './components/CaptureScreen'
@@ -7,6 +8,7 @@ import { SettingsDashboard } from './components/SettingsDashboard'
 import { useKioskBootstrap } from './hooks/useKioskBootstrap'
 import { useKioskController } from './hooks/useKioskController'
 import { useKioskFullscreen } from './hooks/useKioskFullscreen'
+import { APP_NAME, APP_SUBTITLE } from './lib/branding'
 
 const CAPTURE_ROUTE = '/capture'
 const SETTINGS_ROUTE = '/settings'
@@ -43,8 +45,16 @@ function App() {
     return (
       <main className="app-shell loading-shell">
         <div className="loading-card">
-          <p className="eyebrow">Sony USB Webcam Kiosk</p>
-          <h1>Đang khởi tạo kiosk…</h1>
+          <img
+            src={cheeseLogo}
+            alt={APP_NAME}
+            className="loading-logo"
+            width={92}
+            height={69}
+          />
+          <p className="eyebrow">{APP_SUBTITLE}</p>
+          <h1>{APP_NAME}</h1>
+          <p className="lede">Đang khởi tạo kiosk…</p>
         </div>
       </main>
     )

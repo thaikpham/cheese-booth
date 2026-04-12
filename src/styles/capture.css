@@ -3,6 +3,7 @@
   position: relative;
   display: flex;
   isolation: isolate;
+  width: 100vw;
   min-height: 100dvh;
   padding: var(--capture-shell-padding);
   align-items: center;
@@ -352,6 +353,15 @@
 .capture-preview-brand {
   flex: 1 1 auto;
   min-width: 0;
+}
+
+.capture-preview-brand-name {
+  color: #E35205;
+}
+
+.capture-preview-brand-separator,
+.capture-preview-brand-subtitle {
+  color: rgba(237, 240, 245, 0.72);
 }
 
 .capture-preview-marquee {

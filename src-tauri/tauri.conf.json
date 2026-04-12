@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Sony USB Webcam Kiosk",
+  "productName": "Cheese Booth",
   "version": "../package.json",
   "identifier": "com.photobooth.sonyusbwebcamkiosk",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Sony USB Webcam Kiosk",
+        "title": "Cheese Booth",
         "width": 1440,
         "height": 960,
         "minWidth": 1024,

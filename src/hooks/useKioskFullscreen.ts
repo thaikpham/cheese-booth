@@ -34,6 +34,43 @@ async function requestBrowserFullscreen(): Promise<boolean> {
   return false
 }
 
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
+}
+
+async function enforceDesktopFullscreen(): Promise<boolean> {
+  try {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window')
+    const currentWindow = getCurrentWindow()
+
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      await currentWindow.show()
+      await currentWindow.setDecorations(false)
+      await currentWindow.setResizable(false)
+      await currentWindow.maximize()
+      await currentWindow.setFullscreen(true)
+      await currentWindow.setFocus()
+
+      const [isFullscreen, isMaximized] = await Promise.all([
+        currentWindow.isFullscreen(),
+        currentWindow.isMaximized(),
+      ])
+
+      if (isFullscreen || isMaximized) {
+        return true
+      }
+
+      await wait(180 * (attempt + 1))
+    }
+  } catch {
+    return false
+  }
+
+  return false
+}
+
 export function useKioskFullscreen(settingsReady: boolean): void {
   useEffect(() => {
     if (!settingsReady) return
@@ -48,12 +85,10 @@ export function useKioskFullscreen(settingsReady: boolean): void {
 
     async function enterFullscreen(): Promise<void> {
       if (isTauriRuntime()) {
-        try {
-          const { getCurrentWindow } = await import('@tauri-apps/api/window')
-          await getCurrentWindow().setFullscreen(true)
+        const enteredDesktopFullscreen = await enforceDesktopFullscreen()
+
+        if (enteredDesktopFullscreen) {
           return
-        } catch {
-          // Fall back to the web fullscreen API below.
         }
       }
 

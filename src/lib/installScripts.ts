@@ -19,7 +19,7 @@ const LATEST_RELEASE_API_URL =
 export const RELEASES_PAGE_URL =
   `https://github.com/${REPO_OWNER}/${REPO_NAME}/releases`
 
-function buildBashAssetResolver(pattern: string, description: string): string {
+function buildBashReleaseResolver(): string {
   return String.raw`LATEST_RELEASE_API_URL="${LATEST_RELEASE_API_URL}"
 
 resolve_asset_url() {
@@ -41,40 +41,60 @@ resolve_asset_url() {
   fi
 
   printf '%s\n' "$asset_url"
+}`
 }
 
-URL="$(resolve_asset_url '${pattern}' '${description}')"
-ASSET="$(basename "$URL")"`
-}
-
-function buildPowerShellAssetResolver(pattern: string, description: string): string {
+function buildPowerShellReleaseResolver(): string {
   return String.raw`$latestReleaseApiUrl = "${LATEST_RELEASE_API_URL}"
-$assetPattern = '${pattern}'
-$assetDescription = "${description}"
 
-$release = Invoke-RestMethod -Headers @{ Accept = "application/vnd.github+json" } -Uri $latestReleaseApiUrl
-$asset = $release.assets | Where-Object { $_.browser_download_url -match $assetPattern } | Select-Object -First 1
+function Resolve-Asset {
+  param(
+    [Parameter(Mandatory = $true)][string]$AssetPattern,
+    [Parameter(Mandatory = $true)][string]$AssetDescription
+  )
 
-if (-not $asset) {
-  throw "Không tìm thấy asset $assetDescription trong latest release."
-}
+  $release = Invoke-RestMethod -Headers @{ Accept = "application/vnd.github+json" } -Uri $latestReleaseApiUrl
+  $asset = $release.assets | Where-Object { $_.browser_download_url -match $AssetPattern } | Select-Object -First 1
 
-$assetName = $asset.name
-$url = $asset.browser_download_url`
+  if (-not $asset) {
+    throw "Không tìm thấy asset $AssetDescription trong latest release."
+  }
+
+  return $asset
+}`
 }
 
 export const INSTALL_SCRIPT_SNIPPETS: InstallScriptSnippet[] = [
   {
-    id: 'macos-apple-silicon',
+    id: 'macos-universal',
     label: 'Sao chép script',
-    platform: 'macOS Apple Silicon',
-    summary: 'Tự tìm bản DMG Apple Silicon mới nhất, cài vào Applications và mở app ngay.',
+    platform: 'macOS',
+    summary: 'Một script duy nhất cho macOS, tự nhận diện Apple Silicon hoặc Intel rồi tải đúng bản DMG mới nhất.',
     script: String.raw`#!/usr/bin/env bash
 set -euo pipefail
 
-# ColorLab V2 Photo Kiosk — macOS Apple Silicon
-${buildBashAssetResolver('darwin.*(aarch64|arm64).*\\.dmg$', 'DMG macOS Apple Silicon')}
-APP_NAME="Sony USB Webcam Kiosk.app"
+# Cheese Booth — macOS Universal
+${buildBashReleaseResolver()}
+APP_NAME="Cheese Booth.app"
+ARCH="$(uname -m)"
+
+case "$ARCH" in
+  arm64|aarch64)
+    ASSET_PATTERN="${REPO_NAME}-(darwin|macos).*(aarch64|arm64).*\.dmg$"
+    ASSET_DESCRIPTION="DMG macOS Apple Silicon"
+    ;;
+  x86_64|amd64)
+    ASSET_PATTERN="${REPO_NAME}-(darwin|macos).*(x64|x86_64).*\.dmg$"
+    ASSET_DESCRIPTION="DMG macOS Intel"
+    ;;
+  *)
+    echo "Kiến trúc macOS chưa được hỗ trợ: $ARCH" >&2
+    exit 1
+    ;;
+esac
+
+URL="$(resolve_asset_url "$ASSET_PATTERN" "$ASSET_DESCRIPTION")"
+ASSET="$(basename "$URL")"
 TMP_DIR="$(mktemp -d)"
 MOUNT_DIR="$TMP_DIR/mount"
 
@@ -101,51 +121,41 @@ echo "Hoàn tất. Đang mở ứng dụng..."
 open "/Applications/$APP_NAME"`,
   },
   {
-    id: 'macos-intel',
+    id: 'windows-universal',
     label: 'Sao chép script',
-    platform: 'macOS Intel',
-    summary: 'Tự tìm bản DMG Intel mới nhất, cài vào Applications và mở app ngay.',
-    script: String.raw`#!/usr/bin/env bash
-set -euo pipefail
+    platform: 'Windows 11',
+    summary: 'Một script PowerShell duy nhất cho Windows, tự nhận diện x64 hoặc ARM64 rồi cài đúng bản MSI mới nhất.',
+    script: String.raw`# Cheese Booth — Windows Universal
+$ErrorActionPreference = "Stop"
 
-# ColorLab V2 Photo Kiosk — macOS Intel
-${buildBashAssetResolver('darwin.*(x64|x86_64).*\\.dmg$', 'DMG macOS Intel')}
-APP_NAME="Sony USB Webcam Kiosk.app"
-TMP_DIR="$(mktemp -d)"
-MOUNT_DIR="$TMP_DIR/mount"
+${buildPowerShellReleaseResolver()}
 
-cleanup() {
-  hdiutil detach "$MOUNT_DIR" -quiet >/dev/null 2>&1 || true
-  rm -rf "$TMP_DIR"
+$rawArch = if ($env:PROCESSOR_ARCHITEW6432) {
+  $env:PROCESSOR_ARCHITEW6432
+} else {
+  $env:PROCESSOR_ARCHITECTURE
 }
 
-trap cleanup EXIT
+switch -Regex ($rawArch.ToUpperInvariant()) {
+  "^(ARM64|AARCH64)$" {
+    $assetPattern = "${REPO_NAME}-windows.*(arm64|aarch64).*\.msi$"
+    $assetDescription = "MSI Windows ARM64"
+    break
+  }
+  "^(AMD64|X86_64)$" {
+    $assetPattern = "${REPO_NAME}-windows.*(x64|x86_64).*\.msi$"
+    $assetDescription = "MSI Windows x64"
+    break
+  }
+  default {
+    throw "Kiến trúc Windows chưa được hỗ trợ: $rawArch"
+  }
+}
 
-echo "Đang tải bộ cài $ASSET..."
-curl -fL "$URL" -o "$TMP_DIR/$ASSET"
-
-echo "Đang mount bộ cài..."
-mkdir -p "$MOUNT_DIR"
-hdiutil attach "$TMP_DIR/$ASSET" -mountpoint "$MOUNT_DIR" -nobrowse -quiet
-
-echo "Đang chép ứng dụng vào /Applications..."
-sudo rm -rf "/Applications/$APP_NAME"
-sudo ditto "$MOUNT_DIR/$APP_NAME" "/Applications/$APP_NAME"
-xattr -dr com.apple.quarantine "/Applications/$APP_NAME" >/dev/null 2>&1 || true
-
-echo "Hoàn tất. Đang mở ứng dụng..."
-open "/Applications/$APP_NAME"`,
-  },
-  {
-    id: 'windows-x64',
-    label: 'Sao chép script',
-    platform: 'Windows 11 x64',
-    summary: 'Tự tìm bộ cài MSI x64 mới nhất và cài silent bằng quyền quản trị.',
-    script: String.raw`# ColorLab V2 Photo Kiosk — Windows 11 x64
-$ErrorActionPreference = "Stop"
-
-${buildPowerShellAssetResolver('windows.*(x64|x86_64).*\\.msi$', 'MSI Windows x64')}
-$tempDir = Join-Path $env:TEMP "colorlabv2-photokiosk"
+$asset = Resolve-Asset -AssetPattern $assetPattern -AssetDescription $assetDescription
+$assetName = $asset.name
+$url = $asset.browser_download_url
+$tempDir = Join-Path $env:TEMP "cheese-booth"
 $installerPath = Join-Path $tempDir $assetName
 
 Write-Host "Đang tạo thư mục tạm..."
@@ -160,38 +170,41 @@ Start-Process -FilePath "msiexec.exe" -ArgumentList @("/i", $installerPath, "/qn
 Write-Host "Hoàn tất cài đặt."`,
   },
   {
-    id: 'windows-arm64',
+    id: 'linux-universal',
     label: 'Sao chép script',
-    platform: 'Windows 11 ARM64',
-    summary: 'Tự tìm bộ cài MSI ARM64 mới nhất và cài silent bằng quyền quản trị.',
-    script: String.raw`# ColorLab V2 Photo Kiosk — Windows 11 ARM64
-$ErrorActionPreference = "Stop"
-
-${buildPowerShellAssetResolver('windows.*(arm64|aarch64).*\\.msi$', 'MSI Windows ARM64')}
-$tempDir = Join-Path $env:TEMP "colorlabv2-photokiosk"
-$installerPath = Join-Path $tempDir $assetName
-
-Write-Host "Đang tạo thư mục tạm..."
-New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
-
-Write-Host "Đang tải bộ cài $assetName..."
-Invoke-WebRequest -Uri $url -OutFile $installerPath
-
-Write-Host "Đang cài đặt ứng dụng..."
-Start-Process -FilePath "msiexec.exe" -ArgumentList @("/i", $installerPath, "/qn", "/norestart") -Verb RunAs -Wait
-
-Write-Host "Hoàn tất cài đặt."`,
-  },
-  {
-    id: 'ubuntu-x64',
-    label: 'Sao chép script',
-    platform: 'Ubuntu x64',
-    summary: 'Tự tìm gói DEB x64 mới nhất và cài đặt bằng apt trên Ubuntu.',
+    platform: 'Linux',
+    summary: 'Một script duy nhất cho Linux x64, tự nhận diện Ubuntu/Debian hoặc Fedora/RHEL rồi tải đúng gói `.deb` hoặc `.rpm`.',
     script: String.raw`#!/usr/bin/env bash
 set -euo pipefail
 
-# ColorLab V2 Photo Kiosk — Ubuntu x64
-${buildBashAssetResolver('linux.*(amd64|x86_64|x64).*\\.deb$', 'DEB Ubuntu x64')}
+# Cheese Booth — Linux Universal
+${buildBashReleaseResolver()}
+ARCH="$(uname -m)"
+
+case "$ARCH" in
+  x86_64|amd64)
+    ;;
+  *)
+    echo "Hiện tại script Linux chỉ hỗ trợ x64. Kiến trúc đang dùng: $ARCH" >&2
+    exit 1
+    ;;
+esac
+
+if command -v apt-get >/dev/null 2>&1; then
+  ASSET_PATTERN="${REPO_NAME}-linux.*(amd64|x86_64|x64).*\.deb$"
+  ASSET_DESCRIPTION="DEB Ubuntu/Debian x64"
+  PACKAGE_EXT="deb"
+elif command -v dnf >/dev/null 2>&1; then
+  ASSET_PATTERN="${REPO_NAME}-linux.*(amd64|x86_64|x64).*\.rpm$"
+  ASSET_DESCRIPTION="RPM Fedora/RHEL x64"
+  PACKAGE_EXT="rpm"
+else
+  echo "Không nhận diện được package manager hỗ trợ. Script này hiện hỗ trợ apt-get và dnf." >&2
+  exit 1
+fi
+
+URL="$(resolve_asset_url "$ASSET_PATTERN" "$ASSET_DESCRIPTION")"
+ASSET="$(basename "$URL")"
 TMP_DIR="$(mktemp -d)"
 PACKAGE_PATH="$TMP_DIR/$ASSET"
 
@@ -200,34 +213,15 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 echo "Đang tải gói $ASSET..."
 curl -fL "$URL" -o "$PACKAGE_PATH"
 
-echo "Đang cập nhật metadata gói..."
-sudo apt-get update
-
-echo "Đang cài đặt ứng dụng..."
-sudo apt-get install -y "$PACKAGE_PATH"
-
-echo "Hoàn tất cài đặt."`,
-  },
-  {
-    id: 'fedora-x64',
-    label: 'Sao chép script',
-    platform: 'Fedora x64',
-    summary: 'Tự tìm gói RPM x64 mới nhất và cài đặt bằng dnf trên Fedora.',
-    script: String.raw`#!/usr/bin/env bash
-set -euo pipefail
-
-# ColorLab V2 Photo Kiosk — Fedora x64
-${buildBashAssetResolver('linux.*(amd64|x86_64|x64).*\\.rpm$', 'RPM Fedora x64')}
-TMP_DIR="$(mktemp -d)"
-PACKAGE_PATH="$TMP_DIR/$ASSET"
-
-trap 'rm -rf "$TMP_DIR"' EXIT
-
-echo "Đang tải gói $ASSET..."
-curl -fL "$URL" -o "$PACKAGE_PATH"
-
-echo "Đang cài đặt ứng dụng..."
-sudo dnf install -y "$PACKAGE_PATH"
+if [ "$PACKAGE_EXT" = "deb" ]; then
+  echo "Đang cập nhật metadata gói..."
+  sudo apt-get update
+  echo "Đang cài đặt ứng dụng..."
+  sudo apt-get install -y "$PACKAGE_PATH"
+else
+  echo "Đang cài đặt ứng dụng..."
+  sudo dnf install -y "$PACKAGE_PATH"
+fi
 
 echo "Hoàn tất cài đặt."`,
   },

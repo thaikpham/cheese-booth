@@ -8,6 +8,7 @@ html,
 body,
 #root {
   margin: 0;
+  width: 100%;
   min-height: 100dvh;
   background: #000;
   color: var(--text);
@@ -15,6 +16,7 @@ body,
 
 body {
   font-family: 'Space Grotesk', sans-serif;
+  overflow: hidden;
 }
 
 button,
@@ -23,10 +25,19 @@ select {
 }
 
 .app-shell {
+  display: flex;
+  align-items: stretch;
   min-height: 100dvh;
   margin: 0 auto;
-  width: 100%;
+  width: 100vw;
   background: #000;
+  overflow: hidden;
+}
+
+.app-shell > *:not(.hidden-video) {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 100dvh;
 }
 
 .loading-shell {
@@ -41,6 +52,13 @@ select {
   border: 1px solid var(--border);
   background: var(--surface);
   box-shadow: var(--shadow);
+}
+
+.loading-logo {
+  display: block;
+  width: 92px;
+  height: auto;
+  margin: 0 0 18px;
 }
 
 .ambient {

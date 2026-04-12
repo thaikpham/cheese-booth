@@ -1,6 +1,6 @@
 import { useEffect, type RefObject } from 'react'
 
-import { drawTransformedCover } from '../lib/media'
+import { drawTransformedCover, getLargestAspectRect } from '../lib/media'
 import type { OperatorSettings } from '../types'
 
 interface UsePreviewCanvasOptions {
@@ -52,6 +52,8 @@ export function usePreviewCanvas({
 
   useEffect(() => {
     let frameId = 0
+    const scratchCanvas = document.createElement('canvas')
+    const scratchContext = scratchCanvas.getContext('2d')
 
     const drawLoop = () => {
       const canvas = previewCanvasRef.current
@@ -62,19 +64,48 @@ export function usePreviewCanvas({
 
         if (context) {
           if (video && video.readyState >= 2) {
-            drawTransformedCover(
-              context,
-              video,
+            const output = getLargestAspectRect(
               video.videoWidth,
               video.videoHeight,
-              canvas.width,
-              canvas.height,
-              {
-                rotationQuarter,
-                flipHorizontal,
-                flipVertical,
-              },
+              rotationQuarter,
             )
+
+            if (scratchContext) {
+              if (
+                scratchCanvas.width !== output.width ||
+                scratchCanvas.height !== output.height
+              ) {
+                scratchCanvas.width = output.width
+                scratchCanvas.height = output.height
+              }
+
+              drawTransformedCover(
+                scratchContext,
+                video,
+                video.videoWidth,
+                video.videoHeight,
+                output.width,
+                output.height,
+                {
+                  rotationQuarter,
+                  flipHorizontal,
+                  flipVertical,
+                },
+              )
+
+              context.clearRect(0, 0, canvas.width, canvas.height)
+              context.drawImage(
+                scratchCanvas,
+                0,
+                0,
+                scratchCanvas.width,
+                scratchCanvas.height,
+                0,
+                0,
+                canvas.width,
+                canvas.height,
+              )
+            }
           } else {
             context.clearRect(0, 0, canvas.width, canvas.height)
             context.fillStyle = '#0c0f14'

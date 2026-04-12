@@ -7,11 +7,11 @@ import type {
   SourceDescriptor,
   StreamState,
 } from '../types'
-import { isTauriRuntime } from '../lib/runtime'
+import { APP_NAME, APP_SUBTITLE } from '../lib/branding'
+import { getRuntimeEnvironment } from '../lib/runtime'
 import { CapturePreview } from './capture/CapturePreview'
 import { CaptureSideRail } from './capture/CaptureSideRail'
 
-const PREVIEW_BRAND_LABEL = 'SONY COLORLAB V2 PHOTOBOOTH'
 const SETTINGS_ROUTE = '/settings'
 
 interface CaptureScreenProps {
@@ -42,7 +42,7 @@ export function CaptureScreen({
   onShutter,
 }: CaptureScreenProps) {
   const navigate = useNavigate()
-  const isDesktopRuntime = isTauriRuntime()
+  const runtime = getRuntimeEnvironment(settings.outputDir)
 
   const isPortrait = settings.rotationQuarter % 2 === 1
   const previewAspect = isPortrait ? '3 / 4' : '4 / 3'
@@ -55,48 +55,19 @@ export function CaptureScreen({
     `R${settings.rotationQuarter * 90}`,
     `H${settings.flipHorizontal ? '1' : '0'}`,
     `V${settings.flipVertical ? '1' : '0'}`,
-    isDesktopRuntime ? 'DESKTOP' : 'BROWSER',
-    settings.outputDir ? 'SAVE' : 'NO-SAVE',
+    runtime.telemetryLabel,
+    runtime.autoSaveReady ? 'SAVE' : 'NO-SAVE',
   ].join('  ·  ')
   const sourceUnavailable = streamState === 'missing-device' || sources.length === 0
   const shutterDisabled =
     isBusy ||
-    !settings.outputDir ||
+    !runtime.autoSaveReady ||
     permissionState !== 'granted' ||
     streamState !== 'live'
 
   return (
     <section className="capture-screen">
       <div className="capture-panel">
-        {!isDesktopRuntime ? (
-          <div className="capture-runtime-banner capture-runtime-banner--browser" role="alert">
-            <div>
-              <p className="capture-runtime-kicker">Browser Preview</p>
-              <p className="capture-runtime-title">Đây chưa phải app desktop kiosk</p>
-              <p className="capture-runtime-copy">
-                Bản browser chỉ dùng để preview camera và giao diện. Auto-save local chỉ hoạt động trong app desktop Tauri đã cài đặt.
-              </p>
-            </div>
-          </div>
-        ) : !settings.outputDir ? (
-          <div className="capture-runtime-banner capture-runtime-banner--pending" role="status">
-            <div>
-              <p className="capture-runtime-kicker">Desktop Ready</p>
-              <p className="capture-runtime-title">Desktop đã mở nhưng chưa bật auto-save</p>
-              <p className="capture-runtime-copy">
-                Vào Settings rồi chọn thư mục lưu để mỗi lần chụp ảnh được ghi ngay xuống máy local.
-              </p>
-            </div>
-            <button
-              className="capture-runtime-action"
-              type="button"
-              onClick={() => navigate(SETTINGS_ROUTE)}
-            >
-              Mở Settings
-            </button>
-          </div>
-        ) : null}
-
         <div className="capture-layout">
           <div className="capture-preview-column">
             <div
@@ -105,7 +76,13 @@ export function CaptureScreen({
             >
               <div className="capture-preview-meta" aria-hidden="true">
                 <p className="capture-settings-marquee capture-preview-brand">
-                  {PREVIEW_BRAND_LABEL}
+                  <span className="capture-preview-brand-name">
+                    {APP_NAME.toUpperCase()}
+                  </span>
+                  <span className="capture-preview-brand-separator"> · </span>
+                  <span className="capture-preview-brand-subtitle">
+                    {APP_SUBTITLE.toUpperCase()}
+                  </span>
                 </p>
                 <p className="capture-settings-marquee capture-preview-marquee">
                   {settingsTelemetryLine}

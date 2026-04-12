@@ -103,6 +103,49 @@ function constrainLongEdge(
   }
 }
 
+function getCenteredAspectCrop(
+  sourceWidth: number,
+  sourceHeight: number,
+  targetWidth: number,
+  targetHeight: number,
+  rotationQuarter: number,
+): {
+  sourceX: number
+  sourceY: number
+  sourceCropWidth: number
+  sourceCropHeight: number
+  rotatedCropWidth: number
+  rotatedCropHeight: number
+} {
+  const normalized = normalizeRotationQuarter(rotationQuarter)
+  const rotatedWidth = normalized % 2 === 1 ? sourceHeight : sourceWidth
+  const rotatedHeight = normalized % 2 === 1 ? sourceWidth : sourceHeight
+  const targetRatio = targetWidth / targetHeight
+
+  let rotatedCropHeight = rotatedHeight
+  let rotatedCropWidth = rotatedCropHeight * targetRatio
+
+  // Prefer preserving the full sensor height and crop symmetrically from the sides.
+  if (rotatedCropWidth > rotatedWidth) {
+    rotatedCropWidth = rotatedWidth
+    rotatedCropHeight = rotatedCropWidth / targetRatio
+  }
+
+  const sourceCropWidth =
+    normalized % 2 === 1 ? rotatedCropHeight : rotatedCropWidth
+  const sourceCropHeight =
+    normalized % 2 === 1 ? rotatedCropWidth : rotatedCropHeight
+
+  return {
+    sourceX: Math.max(0, (sourceWidth - sourceCropWidth) / 2),
+    sourceY: Math.max(0, (sourceHeight - sourceCropHeight) / 2),
+    sourceCropWidth: Math.max(1, sourceCropWidth),
+    sourceCropHeight: Math.max(1, sourceCropHeight),
+    rotatedCropWidth: Math.max(1, rotatedCropWidth),
+    rotatedCropHeight: Math.max(1, rotatedCropHeight),
+  }
+}
+
 export function drawTransformedCover(
   ctx: CanvasRenderingContext2D,
   source: CanvasImageSource,
@@ -113,15 +156,19 @@ export function drawTransformedCover(
   transform: TransformSettings,
 ): void {
   const rotationQuarter = normalizeRotationQuarter(transform.rotationQuarter)
-  const rotatedWidth = rotationQuarter % 2 === 1 ? sourceHeight : sourceWidth
-  const rotatedHeight = rotationQuarter % 2 === 1 ? sourceWidth : sourceHeight
-
-  const scale = Math.max(targetWidth / rotatedWidth, targetHeight / rotatedHeight)
-
-  // NOTE: drawWidth/Height are the dimensions of the ORIGINAL source image
-  // scaled up to "cover" the target. The rotation happens via ctx.rotate.
-  const drawWidth = sourceWidth * scale
-  const drawHeight = sourceHeight * scale
+  const crop = getCenteredAspectCrop(
+    sourceWidth,
+    sourceHeight,
+    targetWidth,
+    targetHeight,
+    rotationQuarter,
+  )
+  const scale = Math.min(
+    targetWidth / crop.rotatedCropWidth,
+    targetHeight / crop.rotatedCropHeight,
+  )
+  const drawWidth = crop.sourceCropWidth * scale
+  const drawHeight = crop.sourceCropHeight * scale
 
   const flipX = transform.flipHorizontal ? -1 : 1
   const flipY = transform.flipVertical ? -1 : 1
@@ -137,10 +184,10 @@ export function drawTransformedCover(
 
   ctx.drawImage(
     source,
-    0,
-    0,
-    sourceWidth,
-    sourceHeight,
+    crop.sourceX,
+    crop.sourceY,
+    crop.sourceCropWidth,
+    crop.sourceCropHeight,
     -drawWidth / 2,
     -drawHeight / 2,
     drawWidth,
