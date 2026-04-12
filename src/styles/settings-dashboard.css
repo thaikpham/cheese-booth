@@ -175,6 +175,61 @@
   line-height: 1.5;
 }
 
+.sd-runtime-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 20px;
+  padding: 15px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.sd-runtime-banner h4 {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.sd-runtime-banner p {
+  margin: 0;
+  font-size: 0.79rem;
+  line-height: 1.6;
+}
+
+.sd-runtime-banner--ready {
+  background: oklch(0.97 0.03 155);
+  border-color: oklch(0.87 0.06 155);
+  color: oklch(0.34 0.1 155);
+}
+
+.sd-runtime-banner--warn {
+  background: oklch(0.97 0.03 80);
+  border-color: oklch(0.88 0.06 70);
+  color: oklch(0.42 0.09 55);
+}
+
+.sd-runtime-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sd-runtime-link:hover {
+  opacity: 0.88;
+}
+
 /* ── Install scripts ── */
 
 .sd-install-section {
@@ -299,11 +354,40 @@
 .sd-install-card {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   padding: 14px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.7);
+}
+
+.sd-install-card-btn {
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    background-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.sd-install-card-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+  box-shadow: 0 8px 24px rgba(27, 31, 35, 0.06);
+}
+
+.sd-install-card-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.sd-install-card-btn.copied {
+  background: var(--accent-soft);
+  border-color: oklch(0.82 0.08 264);
 }
 
 .sd-install-card-head {
@@ -324,6 +408,36 @@
   color: var(--muted-fg);
   font-size: 0.76rem;
   line-height: 1.55;
+}
+
+.sd-install-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--accent);
+}
+
+.sd-install-card-btn.copied .sd-install-card-icon {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.sd-install-card-hint {
+  color: var(--muted-fg);
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.sd-install-card-btn.copied .sd-install-card-hint {
+  color: var(--accent);
 }
 
 .sd-install-copy-btn {
@@ -358,20 +472,6 @@
   background: var(--fg);
   border-color: var(--fg);
   color: #fff;
-}
-
-.sd-install-code {
-  margin: 0;
-  padding: 12px 14px;
-  border-radius: calc(var(--radius) - 2px);
-  background: oklch(0.17 0.01 260);
-  color: oklch(0.94 0.01 260);
-  font-family: 'IBM Plex Mono', 'Red Hat Mono', monospace;
-  font-size: 0.72rem;
-  line-height: 1.7;
-  overflow-x: auto;
-  white-space: pre;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
 }
 
 /* ── Key-value grid ── */
@@ -982,7 +1082,8 @@ select.sd-input {
 
   .sd-install-section-head,
   .sd-install-card-head,
-  .sd-release-banner {
+  .sd-release-banner,
+  .sd-runtime-banner {
     flex-direction: column;
   }
 

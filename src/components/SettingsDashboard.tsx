@@ -3,6 +3,7 @@ import {
   Camera,
   Check,
   Clock3,
+  CodeXml,
   Copy,
   FlipHorizontal2,
   FlipVertical2,
@@ -110,6 +111,12 @@ export function SettingsDashboard({
   const outputDirValue = isEditingOutputDir ? outputDirDraft : persistedOutputDir
   const desktopSaveEnabled = isTauriRuntime()
   const combinedInstallScripts = buildCombinedInstallScripts()
+  const runtimeModeLabel = desktopSaveEnabled ? 'Desktop Tauri' : 'Browser Preview'
+  const autoSaveSummary = !desktopSaveEnabled
+    ? 'Chỉ hỗ trợ trên desktop'
+    : settings.outputDir
+      ? 'Đã sẵn sàng'
+      : 'Chưa chọn thư mục'
 
   useEffect(() => {
     let cancelled = false
@@ -238,6 +245,42 @@ export function SettingsDashboard({
     )
   }
 
+  function renderRuntimeBanner() {
+    if (desktopSaveEnabled) {
+      return (
+        <div className="sd-runtime-banner sd-runtime-banner--ready" role="status">
+          <div>
+            <h4>Đang mở app desktop Tauri</h4>
+            <p>
+              {settings.outputDir
+                ? 'Auto-save local đang hoạt động. Ảnh và boomerang mới sẽ được ghi vào thư mục đã chọn sau mỗi lần chụp.'
+                : 'Auto-save local đã khả dụng. Chỉ cần chọn thư mục lưu trong mục "Thư mục lưu" để bật ghi file sau mỗi lần chụp.'}
+            </p>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div className="sd-runtime-banner sd-runtime-banner--warn" role="alert">
+        <div>
+          <h4>Bạn đang ở bản browser preview</h4>
+          <p>
+            Bản này chỉ để preview giao diện và camera. Auto-save local, chọn thư mục lưu, và kiểm tra kiosk thực tế chỉ hoạt động khi mở app desktop Tauri đã cài từ GitHub Releases.
+          </p>
+        </div>
+        <a
+          className="sd-runtime-link"
+          href={RELEASES_PAGE_URL}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Mở desktop release
+        </a>
+      </div>
+    )
+  }
+
   /* ── Section renderers ── */
 
   function renderContent() {
@@ -249,6 +292,8 @@ export function SettingsDashboard({
               <h2>Tổng quan</h2>
               <p className="sd-panel-sub">Trạng thái hệ thống hiện tại</p>
             </header>
+
+            {renderRuntimeBanner()}
 
             <section className="sd-install-section" aria-label="Install scripts">
               <div className="sd-install-section-head">
@@ -283,32 +328,31 @@ export function SettingsDashboard({
                   const isCopied = copiedScriptId === installScript.id
 
                   return (
-                    <article key={installScript.id} className="sd-install-card">
+                    <button
+                      key={installScript.id}
+                      className={`sd-install-card sd-install-card-btn ${isCopied ? 'copied' : ''}`}
+                      type="button"
+                      onClick={() => {
+                        void handleCopyInstallScript(
+                          installScript.id,
+                          installScript.script,
+                        )
+                      }}
+                      aria-label={`Sao chép script cài đặt cho ${installScript.platform}`}
+                    >
                       <div className="sd-install-card-head">
                         <div>
                           <h4>{installScript.platform}</h4>
                           <p>{installScript.summary}</p>
                         </div>
-                        <button
-                          className={`sd-install-copy-btn ${isCopied ? 'copied' : ''}`}
-                          type="button"
-                          onClick={() => {
-                            void handleCopyInstallScript(
-                              installScript.id,
-                              installScript.script,
-                            )
-                          }}
-                          aria-label={`Sao chép script cài đặt cho ${installScript.platform}`}
-                        >
-                          {isCopied ? <Check size={15} /> : <Copy size={15} />}
-                          {isCopied ? 'Đã sao chép' : installScript.label}
-                        </button>
+                        <span className="sd-install-card-icon" aria-hidden="true">
+                          {isCopied ? <Check size={20} /> : <CodeXml size={20} />}
+                        </span>
                       </div>
-
-                      <pre className="sd-install-code">
-                        <code>{installScript.script}</code>
-                      </pre>
-                    </article>
+                      <span className="sd-install-card-hint">
+                        {isCopied ? 'Đã sao chép vào clipboard' : 'Nhấn để sao chép script cài đặt'}
+                      </span>
+                    </button>
                   )
                 })}
               </div>
@@ -328,8 +372,34 @@ export function SettingsDashboard({
                 <span className="sd-kv-value">{currentSourceLabel}</span>
               </div>
               <div className="sd-kv">
+                <span className="sd-kv-label">Runtime</span>
+                <span className="sd-kv-value">
+                  <span
+                    className="sd-status-dot"
+                    data-tone={desktopSaveEnabled ? 'good' : 'warn'}
+                  />
+                  {runtimeModeLabel}
+                </span>
+              </div>
+              <div className="sd-kv">
                 <span className="sd-kv-label">Hướng</span>
                 <span className="sd-kv-value">{orientationLabel} · {settings.rotationQuarter * 90}°</span>
+              </div>
+              <div className="sd-kv">
+                <span className="sd-kv-label">Auto-save local</span>
+                <span className="sd-kv-value">
+                  <span
+                    className="sd-status-dot"
+                    data-tone={
+                      !desktopSaveEnabled
+                        ? 'warn'
+                        : settings.outputDir
+                          ? 'good'
+                          : 'neutral'
+                    }
+                  />
+                  {autoSaveSummary}
+                </span>
               </div>
               <div className="sd-kv">
                 <span className="sd-kv-label">Flip</span>
@@ -494,6 +564,8 @@ export function SettingsDashboard({
               <h2>Thư mục lưu</h2>
               <p className="sd-panel-sub">Cấu hình đường dẫn lưu ảnh và video</p>
             </header>
+
+            {renderRuntimeBanner()}
 
             <div className="sd-field">
               <label className="sd-field-label">Đường dẫn</label>
