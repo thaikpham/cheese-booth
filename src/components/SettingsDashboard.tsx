@@ -1,7 +1,9 @@
 import {
   ArrowLeft,
   Camera,
+  Check,
   Clock3,
+  Copy,
   FlipHorizontal2,
   FlipVertical2,
   FolderOpen,
@@ -24,6 +26,7 @@ import type {
   SourceDescriptor,
   StreamState,
 } from '../types'
+import { INSTALL_SCRIPT_SNIPPETS } from '../lib/installScripts'
 import { isTauriRuntime } from '../lib/runtime'
 import { CapturePreview } from './capture/CapturePreview'
 
@@ -85,6 +88,7 @@ export function SettingsDashboard({
   const persistedOutputDir = settings.outputDir ?? ''
   const [outputDirDraft, setOutputDirDraft] = useState(persistedOutputDir)
   const [isEditingOutputDir, setIsEditingOutputDir] = useState(false)
+  const [copiedScriptId, setCopiedScriptId] = useState<string | null>(null)
 
   const isPortrait = settings.rotationQuarter % 2 === 1
   const previewAspect = isPortrait ? '3 / 4' : '4 / 3'
@@ -125,6 +129,18 @@ export function SettingsDashboard({
     }
   }
 
+  async function handleCopyInstallScript(
+    scriptId: string,
+    script: string,
+  ): Promise<void> {
+    await copyTextToClipboard(script)
+    setCopiedScriptId(scriptId)
+
+    window.setTimeout(() => {
+      setCopiedScriptId((current) => (current === scriptId ? null : current))
+    }, 1600)
+  }
+
   /* ── Section renderers ── */
 
   function renderContent() {
@@ -136,6 +152,53 @@ export function SettingsDashboard({
               <h2>Tổng quan</h2>
               <p className="sd-panel-sub">Trạng thái hệ thống hiện tại</p>
             </header>
+
+            <section className="sd-install-section" aria-label="Install scripts">
+              <div className="sd-install-section-head">
+                <div>
+                  <p className="sd-install-kicker">Internal Distribution</p>
+                  <h3>Install scripts tu GitHub Releases</h3>
+                </div>
+                <p className="sd-install-section-copy">
+                  Copy script dung voi tung may kiosk de tai va cai ban desktop moi nhat.
+                </p>
+              </div>
+
+              <div className="sd-install-grid">
+                {INSTALL_SCRIPT_SNIPPETS.map((installScript) => {
+                  const isCopied = copiedScriptId === installScript.id
+
+                  return (
+                    <article key={installScript.id} className="sd-install-card">
+                      <div className="sd-install-card-head">
+                        <div>
+                          <h4>{installScript.platform}</h4>
+                          <p>{installScript.summary}</p>
+                        </div>
+                        <button
+                          className={`sd-install-copy-btn ${isCopied ? 'copied' : ''}`}
+                          type="button"
+                          onClick={() => {
+                            void handleCopyInstallScript(
+                              installScript.id,
+                              installScript.script,
+                            )
+                          }}
+                          aria-label={`Copy install script for ${installScript.platform}`}
+                        >
+                          {isCopied ? <Check size={15} /> : <Copy size={15} />}
+                          {isCopied ? 'Copied' : installScript.label}
+                        </button>
+                      </div>
+
+                      <pre className="sd-install-code">
+                        <code>{installScript.script}</code>
+                      </pre>
+                    </article>
+                  )
+                })}
+              </div>
+            </section>
 
             <div className="sd-kv-grid">
               <div className="sd-kv">
@@ -547,4 +610,22 @@ function getStreamSummary(s: StreamState) {
     case 'error':          return { label: 'Lỗi',          tone: 'warn'    as const }
     default:               return { label: 'Chờ',          tone: 'neutral' as const }
   }
+}
+
+async function copyTextToClipboard(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text)
+    return
+  }
+
+  const textarea = document.createElement('textarea')
+
+  textarea.value = text
+  textarea.setAttribute('readonly', 'true')
+  textarea.style.position = 'fixed'
+  textarea.style.opacity = '0'
+  document.body.appendChild(textarea)
+  textarea.select()
+  document.execCommand('copy')
+  textarea.remove()
 }

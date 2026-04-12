@@ -15,12 +15,19 @@ jobs:
         include:
           - platform: macos-latest
             args: '--target aarch64-apple-darwin'
+            rustTargets: 'aarch64-apple-darwin'
           - platform: macos-latest
             args: '--target x86_64-apple-darwin'
+            rustTargets: 'x86_64-apple-darwin'
           - platform: ubuntu-22.04
             args: ''
+            rustTargets: ''
           - platform: windows-latest
             args: ''
+            rustTargets: ''
+          - platform: windows-latest
+            args: '--target aarch64-pc-windows-msvc'
+            rustTargets: 'aarch64-pc-windows-msvc'
 
     runs-on: ${{ matrix.platform }}
 
@@ -37,13 +44,13 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: ${{ matrix.rustTargets }}
 
       - name: Install Linux system dependencies
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf rpm
 
       - name: Install frontend dependencies
         run: npm ci
@@ -61,3 +68,4 @@ jobs:
           prerelease: false
           tauriScript: npm run tauri
           args: ${{ matrix.args }}
+          releaseAssetNamePattern: 'colorlabv2-photokiosk-[platform]-[arch][ext]'

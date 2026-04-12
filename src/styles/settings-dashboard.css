@@ -175,6 +175,136 @@
   line-height: 1.5;
 }
 
+/* ── Install scripts ── */
+
+.sd-install-section {
+  margin-bottom: 24px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 4px);
+  background:
+    linear-gradient(180deg, rgba(103, 118, 255, 0.03), rgba(255, 255, 255, 0.72)),
+    var(--card);
+  box-shadow: var(--shadow);
+}
+
+.sd-install-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.sd-install-kicker {
+  margin: 0 0 4px;
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.sd-install-section-head h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.sd-install-section-copy {
+  margin: 0;
+  max-width: 28rem;
+  color: var(--muted-fg);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  text-align: right;
+}
+
+.sd-install-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.sd-install-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.sd-install-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sd-install-card-head h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.sd-install-card-head p {
+  margin: 4px 0 0;
+  color: var(--muted-fg);
+  font-size: 0.76rem;
+  line-height: 1.55;
+}
+
+.sd-install-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 102px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    background-color 140ms ease,
+    color 140ms ease,
+    border-color 140ms ease;
+}
+
+.sd-install-copy-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+}
+
+.sd-install-copy-btn.copied {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: #fff;
+}
+
+.sd-install-code {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: calc(var(--radius) - 2px);
+  background: oklch(0.17 0.01 260);
+  color: oklch(0.94 0.01 260);
+  font-family: 'IBM Plex Mono', 'Red Hat Mono', monospace;
+  font-size: 0.72rem;
+  line-height: 1.7;
+  overflow-x: auto;
+  white-space: pre;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+}
+
 /* ── Key-value grid ── */
 
 .sd-kv-grid {
@@ -708,6 +838,10 @@ select.sd-input {
   .sd-rail-item {
     height: 44px;
   }
+
+  .sd-install-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 860px) {
@@ -775,5 +909,15 @@ select.sd-input {
 
   .sd-preview {
     max-height: 50vh;
+  }
+
+  .sd-install-section-head,
+  .sd-install-card-head {
+    flex-direction: column;
+  }
+
+  .sd-install-section-copy {
+    max-width: none;
+    text-align: left;
   }
 }
