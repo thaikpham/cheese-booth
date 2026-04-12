@@ -15,7 +15,7 @@ import {
   Settings2,
   Video,
 } from 'lucide-react'
-import { useState, type KeyboardEvent, type RefObject } from 'react'
+import { useEffect, useState, type KeyboardEvent, type RefObject } from 'react'
 import { Link } from 'react-router-dom'
 
 import type {
@@ -26,12 +26,19 @@ import type {
   SourceDescriptor,
   StreamState,
 } from '../types'
-import { INSTALL_SCRIPT_SNIPPETS } from '../lib/installScripts'
+import {
+  buildCombinedInstallScripts,
+  fetchLatestReleaseStatus,
+  INSTALL_SCRIPT_SNIPPETS,
+  RELEASES_PAGE_URL,
+  type LatestReleaseStatus,
+} from '../lib/installScripts'
 import { isTauriRuntime } from '../lib/runtime'
 import { CapturePreview } from './capture/CapturePreview'
 
 const COUNTDOWN_OPTIONS: CountdownSec[] = [3, 5, 10]
 const CAPTURE_ROUTE = '/capture'
+const COPY_ALL_SCRIPTS_ID = '__all__'
 
 type SectionId = 'overview' | 'capture' | 'camera' | 'output' | 'transform'
 
@@ -89,6 +96,8 @@ export function SettingsDashboard({
   const [outputDirDraft, setOutputDirDraft] = useState(persistedOutputDir)
   const [isEditingOutputDir, setIsEditingOutputDir] = useState(false)
   const [copiedScriptId, setCopiedScriptId] = useState<string | null>(null)
+  const [latestReleaseStatus, setLatestReleaseStatus] =
+    useState<LatestReleaseStatus | null>(null)
 
   const isPortrait = settings.rotationQuarter % 2 === 1
   const previewAspect = isPortrait ? '3 / 4' : '4 / 3'
@@ -100,6 +109,21 @@ export function SettingsDashboard({
   const orientationLabel = isPortrait ? 'Portrait' : 'Landscape'
   const outputDirValue = isEditingOutputDir ? outputDirDraft : persistedOutputDir
   const desktopSaveEnabled = isTauriRuntime()
+  const combinedInstallScripts = buildCombinedInstallScripts()
+
+  useEffect(() => {
+    let cancelled = false
+
+    void fetchLatestReleaseStatus().then((status) => {
+      if (!cancelled) {
+        setLatestReleaseStatus(status)
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   function commitOutputDirDraft(): void {
     const nextOutputDir = outputDirValue.trim()
@@ -141,6 +165,79 @@ export function SettingsDashboard({
     }, 1600)
   }
 
+  function renderReleaseStatusBanner() {
+    if (latestReleaseStatus === null) {
+      return (
+        <div className="sd-release-banner sd-release-banner--neutral">
+          <p>Đang kiểm tra latest release trên GitHub...</p>
+        </div>
+      )
+    }
+
+    if (latestReleaseStatus.state === 'missing') {
+      return (
+        <div className="sd-release-banner sd-release-banner--warn">
+          <div>
+            <h4>Release chưa sẵn sàng</h4>
+            <p>
+              Repo hiện chưa có latest release để các script cài đặt tải asset.
+              Hãy tạo tag phiên bản mới rồi đợi workflow release hoàn tất.
+            </p>
+          </div>
+          <a
+            className="sd-release-link"
+            href={RELEASES_PAGE_URL}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Mở trang Releases
+          </a>
+        </div>
+      )
+    }
+
+    if (latestReleaseStatus.state === 'ready') {
+      return (
+        <div className="sd-release-banner sd-release-banner--ready">
+          <div>
+            <h4>Latest release sẵn sàng</h4>
+            <p>
+              Có thể dùng ngay các script bên dưới.
+              {latestReleaseStatus.tagName ? ` Phiên bản mới nhất: ${latestReleaseStatus.tagName}.` : ''}
+            </p>
+          </div>
+          <a
+            className="sd-release-link"
+            href={latestReleaseStatus.htmlUrl ?? RELEASES_PAGE_URL}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Xem release
+          </a>
+        </div>
+      )
+    }
+
+    return (
+      <div className="sd-release-banner sd-release-banner--neutral">
+        <div>
+          <h4>Không kiểm tra được release</h4>
+          <p>
+            Không xác minh được latest release từ GitHub lúc này. Bạn vẫn có thể sao chép script hoặc mở trang Releases để kiểm tra thủ công.
+          </p>
+        </div>
+        <a
+          className="sd-release-link"
+          href={RELEASES_PAGE_URL}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Mở trang Releases
+        </a>
+      </div>
+    )
+  }
+
   /* ── Section renderers ── */
 
   function renderContent() {
@@ -156,13 +253,30 @@ export function SettingsDashboard({
             <section className="sd-install-section" aria-label="Install scripts">
               <div className="sd-install-section-head">
                 <div>
-                  <p className="sd-install-kicker">Internal Distribution</p>
-                  <h3>Install scripts tu GitHub Releases</h3>
+                  <p className="sd-install-kicker">Phân phối nội bộ</p>
+                  <h3>Script cài đặt từ GitHub Releases</h3>
                 </div>
-                <p className="sd-install-section-copy">
-                  Copy script dung voi tung may kiosk de tai va cai ban desktop moi nhat.
-                </p>
+                <div className="sd-install-section-actions">
+                  <p className="sd-install-section-copy">
+                    Sao chép đúng script cho từng máy kiosk để tải và cài bản desktop mới nhất.
+                  </p>
+                  <button
+                    className={`sd-install-copy-btn sd-install-copy-btn--all ${copiedScriptId === COPY_ALL_SCRIPTS_ID ? 'copied' : ''}`}
+                    type="button"
+                    onClick={() => {
+                      void handleCopyInstallScript(
+                        COPY_ALL_SCRIPTS_ID,
+                        combinedInstallScripts,
+                      )
+                    }}
+                  >
+                    {copiedScriptId === COPY_ALL_SCRIPTS_ID ? <Check size={15} /> : <Copy size={15} />}
+                    {copiedScriptId === COPY_ALL_SCRIPTS_ID ? 'Đã sao chép' : 'Sao chép tất cả'}
+                  </button>
+                </div>
               </div>
+
+              {renderReleaseStatusBanner()}
 
               <div className="sd-install-grid">
                 {INSTALL_SCRIPT_SNIPPETS.map((installScript) => {
@@ -184,10 +298,10 @@ export function SettingsDashboard({
                               installScript.script,
                             )
                           }}
-                          aria-label={`Copy install script for ${installScript.platform}`}
+                          aria-label={`Sao chép script cài đặt cho ${installScript.platform}`}
                         >
                           {isCopied ? <Check size={15} /> : <Copy size={15} />}
-                          {isCopied ? 'Copied' : installScript.label}
+                          {isCopied ? 'Đã sao chép' : installScript.label}
                         </button>
                       </div>
 

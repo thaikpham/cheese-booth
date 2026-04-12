@@ -221,10 +221,79 @@
   text-align: right;
 }
 
+.sd-install-section-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.sd-install-copy-btn--all {
+  flex-shrink: 0;
+}
+
 .sd-install-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+}
+
+.sd-release-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.sd-release-banner h4 {
+  margin: 0 0 4px;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.sd-release-banner p {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+.sd-release-banner--warn {
+  background: oklch(0.97 0.03 80);
+  border-color: oklch(0.88 0.06 70);
+  color: oklch(0.42 0.09 55);
+}
+
+.sd-release-banner--ready {
+  background: oklch(0.97 0.03 155);
+  border-color: oklch(0.87 0.06 155);
+  color: oklch(0.34 0.1 155);
+}
+
+.sd-release-banner--neutral {
+  background: var(--muted);
+  color: var(--muted-fg);
+}
+
+.sd-release-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sd-release-link:hover {
+  opacity: 0.88;
 }
 
 .sd-install-card {
@@ -912,12 +981,19 @@ select.sd-input {
   }
 
   .sd-install-section-head,
-  .sd-install-card-head {
+  .sd-install-card-head,
+  .sd-release-banner {
     flex-direction: column;
   }
 
   .sd-install-section-copy {
     max-width: none;
     text-align: left;
+  }
+
+  .sd-install-section-actions {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
   }
 }
