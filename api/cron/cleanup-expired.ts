@@ -1,7 +1,7 @@
-import { listExpiredCaptures, markCaptureDeleted } from '../_lib/db'
-import { getAppEnv } from '../_lib/env'
-import { handleApiError, unauthorized } from '../_lib/http'
-import { deleteObjectIfExists } from '../_lib/r2'
+import { listExpiredCaptures, markCaptureDeleted } from '../_lib/db.js'
+import { getAppEnv } from '../_lib/env.js'
+import { handleApiError, unauthorized } from '../_lib/http.js'
+import { deleteObjectIfExists } from '../_lib/r2.js'
 
 export const runtime = 'nodejs'
 

@@ -1,6 +1,6 @@
-import { findCaptureByToken } from './_lib/db'
-import { gone, handleApiError, notFound } from './_lib/http'
-import { createSignedDownloadUrl } from './_lib/r2'
+import { findCaptureByToken } from './_lib/db.js'
+import { gone, handleApiError, notFound } from './_lib/http.js'
+import { createSignedDownloadUrl } from './_lib/r2.js'
 
 export const runtime = 'nodejs'
 

@@ -1,6 +1,6 @@
 import { neon } from '@neondatabase/serverless'
 
-import { getAppEnv } from './env'
+import { getAppEnv } from './env.js'
 
 export interface CaptureDownloadRecord {
   capture_id: string

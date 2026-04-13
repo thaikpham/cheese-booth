@@ -11,7 +11,7 @@ import {
   SIGNED_DOWNLOAD_TTL_SEC,
   SIGNED_UPLOAD_TTL_SEC,
   getAppEnv,
-} from './env'
+} from './env.js'
 
 interface SignedUploadUrl {
   url: string

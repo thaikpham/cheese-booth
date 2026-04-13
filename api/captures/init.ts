@@ -1,9 +1,9 @@
-import { randomUUID } from 'node:crypto'
+import { randomUUID } from 'crypto'
 
-import { createPendingCapture } from '../_lib/db'
-import { CLOUD_SHARE_TTL_MS } from '../_lib/env'
-import { badRequest, handleApiError, parseJsonBody } from '../_lib/http'
-import { createSignedUploadUrl } from '../_lib/r2'
+import { createPendingCapture } from '../_lib/db.js'
+import { CLOUD_SHARE_TTL_MS } from '../_lib/env.js'
+import { badRequest, handleApiError, parseJsonBody } from '../_lib/http.js'
+import { createSignedUploadUrl } from '../_lib/r2.js'
 
 export const runtime = 'nodejs'
 

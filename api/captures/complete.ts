@@ -1,19 +1,19 @@
-import { randomBytes } from 'node:crypto'
+import { randomBytes } from 'crypto'
 
 import {
   type CaptureDownloadRecord,
   findCaptureById,
   markCaptureReady,
-} from '../_lib/db'
-import { getAppEnv } from '../_lib/env'
+} from '../_lib/db.js'
+import { getAppEnv } from '../_lib/env.js'
 import {
   badRequest,
   conflict,
   handleApiError,
   notFound,
   parseJsonBody,
-} from '../_lib/http'
-import { verifyObjectExists } from '../_lib/r2'
+} from '../_lib/http.js'
+import { verifyObjectExists } from '../_lib/r2.js'
 
 export const runtime = 'nodejs'
 
