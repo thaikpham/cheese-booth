@@ -24,6 +24,7 @@ function KioskShell() {
     countdownValue,
     boomerangRecording,
     captureOutcome,
+    browserQrQueue,
     previewFrameRef,
     previewCanvasRef,
     videoRef,
@@ -32,8 +33,10 @@ function KioskShell() {
     refreshSources,
     retryPermission,
     handleShutter,
+    approveCaptureOutcomeShare,
+    rejectCaptureOutcome,
     dismissCaptureOutcome,
-    retryCaptureOutcomeShare,
+    retryBrowserQrQueueItem,
     setMode,
     setCountdown,
     setRotationQuarter,
@@ -81,6 +84,7 @@ function KioskShell() {
               countdownValue={countdownValue}
               boomerangRecording={boomerangRecording}
               captureOutcome={captureOutcome}
+              browserQrQueue={browserQrQueue}
               previewFrameRef={previewFrameRef}
               previewCanvasRef={previewCanvasRef}
               onRetryPermission={() => {
@@ -97,8 +101,10 @@ function KioskShell() {
               onSetRotationQuarter={setRotationQuarter}
               onFlipHorizontal={toggleFlipHorizontal}
               onFlipVertical={toggleFlipVertical}
+              onApproveCaptureOutcomeShare={approveCaptureOutcomeShare}
+              onRejectCaptureOutcome={rejectCaptureOutcome}
               onDismissCaptureOutcome={dismissCaptureOutcome}
-              onRetryCaptureOutcomeShare={retryCaptureOutcomeShare}
+              onRetryBrowserQrQueueItem={retryBrowserQrQueueItem}
             />
           }
         />

@@ -25,7 +25,7 @@ interface InteractiveTelemetryToken {
 }
 
 interface PassiveTelemetryToken {
-  id: 'aspect' | 'runtime' | 'save'
+  id: 'aspect'
   label: string
   interactive: false
   accent: boolean
@@ -38,8 +38,6 @@ interface CapturePreviewTelemetryProps {
     OperatorSettings,
     'captureMode' | 'countdownSec' | 'rotationQuarter' | 'flipHorizontal' | 'flipVertical'
   >
-  runtimeTelemetryLabel: string
-  autoSaveReady: boolean
   disabled?: boolean
   onModeChange: (mode: CaptureMode) => void
   onCountdownChange: (countdownSec: CountdownSec) => void
@@ -55,8 +53,6 @@ const ROTATION_OPTIONS: OperatorSettings['rotationQuarter'][] = [0, 1, 2, 3]
 
 export function CapturePreviewTelemetry({
   settings,
-  runtimeTelemetryLabel,
-  autoSaveReady,
   disabled = false,
   onModeChange,
   onCountdownChange,
@@ -224,18 +220,6 @@ export function CapturePreviewTelemetry({
           },
         },
       ],
-    },
-    {
-      id: 'runtime',
-      label: runtimeTelemetryLabel,
-      interactive: false,
-      accent: false,
-    },
-    {
-      id: 'save',
-      label: autoSaveReady ? 'SAVE' : 'NO-SAVE',
-      interactive: false,
-      accent: false,
     },
   ]
 

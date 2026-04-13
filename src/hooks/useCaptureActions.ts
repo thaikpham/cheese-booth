@@ -16,6 +16,7 @@ import {
 import { pickOutputDirectory, saveCaptureToOutputDir } from '../lib/storage'
 import { getRuntimeEnvironment } from '../lib/runtime'
 import type {
+  BrowserQrQueueItem,
   BoomerangRecordingIndicator,
   CaptureMode,
   CaptureCloudShare,
@@ -26,7 +27,7 @@ import type {
 } from '../types'
 import { getMediaErrorMessage, transformFromSettings } from './kioskControllerUtils'
 import {
-  BROWSER_CLOUD_STORAGE_PENDING_LABEL,
+  BROWSER_CLOUD_STORAGE_REVIEW_LABEL,
   type PendingCloudShareUpload,
   useCaptureCloudShare,
 } from './useCaptureCloudShare'
@@ -46,10 +47,13 @@ interface UseCaptureActionsResult {
   countdownValue: number | null
   boomerangRecording: BoomerangRecordingIndicator | null
   captureOutcome: CaptureOutcome | null
+  browserQrQueue: BrowserQrQueueItem[]
   chooseOutputDir: () => Promise<string | null>
   handleShutter: () => Promise<boolean>
+  approveCaptureOutcomeShare: () => void
+  rejectCaptureOutcome: () => void
   dismissCaptureOutcome: () => void
-  retryCaptureOutcomeShare: () => void
+  retryBrowserQrQueueItem: (id: string) => void
   setMode: (captureMode: CaptureMode) => void
   setCountdown: (countdownSec: CountdownSec) => void
   setRotationQuarter: (rotationQuarter: OperatorSettings['rotationQuarter']) => void
@@ -72,12 +76,12 @@ export function useCaptureActions({
     useState<BoomerangRecordingIndicator | null>(null)
   const [captureOutcome, setCaptureOutcome] = useState<CaptureOutcome | null>(null)
   const {
-    resetCaptureOutcomeShare,
-    startBrowserCloudShare,
-    retryCaptureOutcomeShare,
-  } = useCaptureCloudShare({
-    setCaptureOutcome,
-  })
+    browserQrQueue,
+    resetStagedBrowserCloudShare,
+    stageBrowserCloudShare,
+    approveBrowserCloudShare,
+    retryBrowserQrQueueItem,
+  } = useCaptureCloudShare()
   const previewUrl = captureOutcome?.previewUrl
 
   useEffect(() => {
@@ -153,7 +157,7 @@ export function useCaptureActions({
 
   async function captureAndPersist(kind: CaptureMode): Promise<{
     outcome: CaptureOutcome
-    shouldUploadToCloud: boolean
+    runtimeKind: ReturnType<typeof getRuntimeEnvironment>['kind']
     rendered: PendingCloudShareUpload
   }> {
     const video = videoRef.current
@@ -174,12 +178,11 @@ export function useCaptureActions({
           })
 
     const runtime = getRuntimeEnvironment(settings.outputDir)
-    let share: CaptureCloudShare = { status: 'idle' }
-    let savedPath = settings.outputDir ?? runtime.outputTargetLabel
-    let shouldUploadToCloud = false
+    const share: CaptureCloudShare = { status: 'idle' }
+    let savedPath = settings.outputDir ?? runtime.storageTargetLabel
 
     if (runtime.kind === 'desktop') {
-      if (!runtime.autoSaveReady) {
+      if (!runtime.storageReady) {
         throw new Error('Chưa chọn thư mục lưu media.')
       }
 
@@ -190,9 +193,7 @@ export function useCaptureActions({
         Date.now(),
       )
     } else {
-      savedPath = BROWSER_CLOUD_STORAGE_PENDING_LABEL
-      share = { status: 'uploading' }
-      shouldUploadToCloud = true
+      savedPath = BROWSER_CLOUD_STORAGE_REVIEW_LABEL
     }
 
     return {
@@ -205,7 +206,7 @@ export function useCaptureActions({
         savedPath,
         share,
       },
-      shouldUploadToCloud,
+      runtimeKind: runtime.kind,
       rendered: {
         ...rendered,
         kind,
@@ -214,7 +215,23 @@ export function useCaptureActions({
   }
 
   function dismissCaptureOutcome(): void {
-    resetCaptureOutcomeShare()
+    resetStagedBrowserCloudShare()
+    setCaptureOutcome(null)
+  }
+
+  function rejectCaptureOutcome(): void {
+    dismissCaptureOutcome()
+  }
+
+  function approveCaptureOutcomeShare(): void {
+    if (captureOutcome?.share.status !== 'idle') {
+      return
+    }
+
+    if (!approveBrowserCloudShare()) {
+      return
+    }
+
     setCaptureOutcome(null)
   }
 
@@ -238,14 +255,14 @@ export function useCaptureActions({
         })
       }
 
-      const { outcome, shouldUploadToCloud, rendered } = await captureAndPersist(
+      const { outcome, runtimeKind, rendered } = await captureAndPersist(
         settings.captureMode,
       )
 
       setCaptureOutcome(outcome)
 
-      if (shouldUploadToCloud) {
-        startBrowserCloudShare(rendered)
+      if (runtimeKind === 'browser') {
+        stageBrowserCloudShare(rendered)
       }
 
       return true
@@ -268,10 +285,13 @@ export function useCaptureActions({
     countdownValue,
     boomerangRecording,
     captureOutcome,
+    browserQrQueue,
     chooseOutputDir,
     handleShutter,
+    approveCaptureOutcomeShare,
+    rejectCaptureOutcome,
     dismissCaptureOutcome,
-    retryCaptureOutcomeShare,
+    retryBrowserQrQueueItem,
     setMode: (captureMode: CaptureMode) => updateSettings({ captureMode }),
     setCountdown: (countdownSec: CountdownSec) => updateSettings({ countdownSec }),
     setRotationQuarter: (rotationQuarter: OperatorSettings['rotationQuarter']) =>

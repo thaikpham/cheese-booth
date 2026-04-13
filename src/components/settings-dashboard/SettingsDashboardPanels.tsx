@@ -96,7 +96,7 @@ export function SettingsDashboardOverviewPanel({
           <span className="sd-kv-label">Cơ chế lưu</span>
           <span className="sd-kv-value">
             <span className="sd-status-dot" data-tone={runtime.tone} />
-            {runtime.autoSaveSummary}
+            {runtime.storageSummary}
           </span>
         </div>
         <div className="sd-kv">
@@ -108,7 +108,7 @@ export function SettingsDashboardOverviewPanel({
         </div>
         <div className="sd-kv">
           <span className="sd-kv-label">Lưu trữ</span>
-          <span className="sd-kv-value">{runtime.outputTargetLabel}</span>
+          <span className="sd-kv-value">{runtime.storageTargetLabel}</span>
         </div>
       </div>
 
@@ -315,13 +315,13 @@ export function SettingsDashboardOutputPanel({
   const desktopSaveEnabled = runtime.supportsOutputDirectorySelection
   const outputDirValue = desktopSaveEnabled
     ? settings.outputDir ?? ''
-    : runtime.outputTargetLabel
+    : runtime.storageTargetLabel
 
   return (
     <div className="sd-panel">
       <header className="sd-panel-header">
-        <h2>Thư mục lưu</h2>
-        <p className="sd-panel-sub">Cấu hình đường dẫn lưu ảnh và video</p>
+        <h2>Đích lưu / Share</h2>
+        <p className="sd-panel-sub">Cấu hình nơi ảnh và video sẽ được ghi hoặc chia sẻ</p>
       </header>
 
       <div className="sd-field">
@@ -334,7 +334,7 @@ export function SettingsDashboardOutputPanel({
             placeholder={
               desktopSaveEnabled
                 ? 'Chọn thư mục bằng nút bên phải'
-                : runtime.outputTargetLabel
+                : runtime.storageTargetLabel
             }
             spellCheck={false}
             autoComplete="off"
@@ -357,8 +357,8 @@ export function SettingsDashboardOutputPanel({
 
       {!desktopSaveEnabled ? (
         <div className="sd-field-hint">
-          Browser mode dùng thư mục download mặc định của trình duyệt. Vị trí thực
-          tế có thể thay đổi theo cài đặt browser trên từng máy.
+          Browser mode dùng cloud share để tạo link và QR tải xuống, nên không cần
+          chọn thư mục local trên máy kiosk.
         </div>
       ) : null}
 
@@ -373,7 +373,7 @@ export function SettingsDashboardOutputPanel({
           <div className="sd-kv sd-kv--full">
             <span className="sd-kv-label">Thư mục hiện tại</span>
             <span className="sd-kv-value sd-kv-value--mono">
-              {runtime.outputTargetLabel}
+              {runtime.storageTargetLabel}
             </span>
           </div>
         </div>

@@ -51,6 +51,19 @@ export interface CaptureCloudShare {
   errorMessage?: string
 }
 
+export type BrowserQrQueueStatus = 'generating' | 'ready' | 'error'
+
+export interface BrowserQrQueueItem {
+  id: string
+  kind: CaptureMode
+  createdAt: number
+  accentColor: string
+  status: BrowserQrQueueStatus
+  downloadUrl?: string
+  expiresAt?: string
+  errorMessage?: string
+}
+
 export interface CaptureOutcome {
   kind: CaptureMode
   previewUrl: string

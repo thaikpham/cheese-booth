@@ -1,8 +1,9 @@
-import type { RefObject } from 'react'
+import type { CSSProperties, RefObject } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import cheeseLogo from '../../cheese_icon_transparent.svg'
 
 import type {
+  BrowserQrQueueItem,
   BoomerangRecordingIndicator,
   CaptureOutcome,
   OperatorSettings,
@@ -12,9 +13,11 @@ import type {
 } from '../types'
 import { APP_NAME, APP_SUBTITLE } from '../lib/branding'
 import { getRuntimeEnvironment } from '../lib/runtime'
+import { BrowserCaptureOutcomeFlow } from './capture/BrowserCaptureOutcomeFlow'
 import { CaptureOutcomeModal } from './capture/CaptureOutcomeModal'
 import { CapturePreview } from './capture/CapturePreview'
 import { CapturePreviewTelemetry } from './capture/CapturePreviewTelemetry'
+import { CaptureQrQueueRail } from './capture/CaptureQrQueueRail'
 import { CaptureSideRail } from './capture/CaptureSideRail'
 
 const SETTINGS_ROUTE = '/settings'
@@ -29,6 +32,7 @@ interface CaptureScreenProps {
   countdownValue: number | null
   boomerangRecording: BoomerangRecordingIndicator | null
   captureOutcome: CaptureOutcome | null
+  browserQrQueue: BrowserQrQueueItem[]
   previewFrameRef: RefObject<HTMLDivElement | null>
   previewCanvasRef: RefObject<HTMLCanvasElement | null>
   onRetryPermission: () => void
@@ -41,8 +45,10 @@ interface CaptureScreenProps {
   ) => void
   onFlipHorizontal: () => void
   onFlipVertical: () => void
+  onApproveCaptureOutcomeShare: () => void
+  onRejectCaptureOutcome: () => void
   onDismissCaptureOutcome: () => void
-  onRetryCaptureOutcomeShare: () => void
+  onRetryBrowserQrQueueItem: (id: string) => void
 }
 
 export function CaptureScreen({
@@ -55,6 +61,7 @@ export function CaptureScreen({
   countdownValue,
   boomerangRecording,
   captureOutcome,
+  browserQrQueue,
   previewFrameRef,
   previewCanvasRef,
   onRetryPermission,
@@ -65,8 +72,10 @@ export function CaptureScreen({
   onSetRotationQuarter,
   onFlipHorizontal,
   onFlipVertical,
+  onApproveCaptureOutcomeShare,
+  onRejectCaptureOutcome,
   onDismissCaptureOutcome,
-  onRetryCaptureOutcomeShare,
+  onRetryBrowserQrQueueItem,
 }: CaptureScreenProps) {
   const navigate = useNavigate()
   const runtime = getRuntimeEnvironment(settings.outputDir)
@@ -78,18 +87,29 @@ export function CaptureScreen({
   const sourceUnavailable = streamState === 'missing-device' || sources.length === 0
   const shutterDisabled =
     isBusy ||
-    !runtime.autoSaveReady ||
+    !runtime.storageReady ||
     permissionState !== 'granted' ||
     streamState !== 'live'
 
   return (
     <section className="capture-screen">
       <div className="capture-panel">
-        <div className="capture-layout">
+        <div
+          className={`capture-layout ${
+            runtime.kind === 'browser' ? 'capture-layout--browser' : ''
+          }`}
+        >
+          {runtime.kind === 'browser' ? (
+            <CaptureQrQueueRail
+              items={browserQrQueue}
+              onRetryItem={onRetryBrowserQrQueueItem}
+            />
+          ) : null}
+
           <div className="capture-preview-column">
             <div
               className="capture-preview-wrapper"
-              style={{ '--aspect-ratio': isPortrait ? 3 / 4 : 4 / 3 } as React.CSSProperties}
+              style={{ '--aspect-ratio': isPortrait ? 3 / 4 : 4 / 3 } as CSSProperties}
             >
               <div className="capture-preview-meta">
                 <div className="capture-settings-marquee capture-preview-brand">
@@ -112,8 +132,6 @@ export function CaptureScreen({
                 </div>
                 <CapturePreviewTelemetry
                   settings={settings}
-                  runtimeTelemetryLabel={runtime.telemetryLabel}
-                  autoSaveReady={runtime.autoSaveReady}
                   disabled={isBusy || countdownValue !== null}
                   onModeChange={onModeChange}
                   onCountdownChange={onCountdownChange}
@@ -148,11 +166,18 @@ export function CaptureScreen({
         </div>
       </div>
 
-      {captureOutcome ? (
+      {captureOutcome && runtime.kind === 'browser' ? (
+        <BrowserCaptureOutcomeFlow
+          outcome={captureOutcome}
+          onApproveShare={onApproveCaptureOutcomeShare}
+          onRejectOutcome={onRejectCaptureOutcome}
+        />
+      ) : null}
+
+      {captureOutcome && runtime.kind === 'desktop' ? (
         <CaptureOutcomeModal
           outcome={captureOutcome}
           onClose={onDismissCaptureOutcome}
-          onRetryShare={onRetryCaptureOutcomeShare}
         />
       ) : null}
     </section>
