@@ -1,6 +1,7 @@
 import { isTauri as detectTauriRuntime } from '@tauri-apps/api/core'
 
 export const BROWSER_DOWNLOADS_LABEL = 'Browser Downloads'
+export const BROWSER_CLOUD_SHARE_LABEL = 'Cloud QR 24h'
 
 export interface RuntimeEnvironment {
   kind: 'desktop' | 'browser'
@@ -29,13 +30,13 @@ export function getRuntimeEnvironment(
   if (!desktopRuntime) {
     return {
       kind: 'browser',
-      label: 'Browser Preview',
+      label: 'Browser + Cloud Share',
       telemetryLabel: 'BROWSER',
-      outputTargetLabel: BROWSER_DOWNLOADS_LABEL,
+      outputTargetLabel: BROWSER_CLOUD_SHARE_LABEL,
       autoSaveReady: true,
-      autoSaveSummary: `Tự tải vào ${BROWSER_DOWNLOADS_LABEL}`,
+      autoSaveSummary: 'Upload riêng tư + QR 24h',
       supportsOutputDirectorySelection: false,
-      tone: 'neutral',
+      tone: 'good',
     }
   }
 

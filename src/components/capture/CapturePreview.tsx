@@ -2,7 +2,11 @@ import { RefreshCw } from 'lucide-react'
 import type { RefObject } from 'react'
 
 import cheeseIcon from '../../../cheese_icon_transparent.svg'
-import type { PermissionState, StreamState } from '../../types'
+import type {
+  BoomerangRecordingIndicator,
+  PermissionState,
+  StreamState,
+} from '../../types'
 
 interface CapturePreviewProps {
   previewAspect: string
@@ -13,6 +17,7 @@ interface CapturePreviewProps {
   sourceUnavailable: boolean
   lastError: string | null
   countdownValue: number | null
+  boomerangRecording?: BoomerangRecordingIndicator | null
   onRetryPermission: () => void
   onRefreshSources: () => void
 }
@@ -26,9 +31,17 @@ export function CapturePreview({
   sourceUnavailable,
   lastError,
   countdownValue,
+  boomerangRecording,
   onRetryPermission,
   onRefreshSources,
 }: CapturePreviewProps) {
+  const elapsedSeconds = boomerangRecording
+    ? formatSeconds(boomerangRecording.elapsedMs)
+    : null
+  const remainingSeconds = boomerangRecording
+    ? formatSeconds(boomerangRecording.remainingMs)
+    : null
+
   return (
     <div
       ref={previewFrameRef}
@@ -40,6 +53,27 @@ export function CapturePreview({
         className="preview-canvas"
         aria-label="Live preview"
       />
+
+      {boomerangRecording ? (
+        <div className="capture-preview-recording-indicator">
+          <div className="capture-preview-recording-head">
+            <span className="capture-preview-recording-dot" aria-hidden="true" />
+            <span>Đang quay boomerang</span>
+          </div>
+          <div className="capture-preview-recording-meta">
+            <span>{elapsedSeconds}s / {formatSeconds(boomerangRecording.totalMs)}s</span>
+            <span>Còn {remainingSeconds}s</span>
+          </div>
+          <div
+            className="capture-preview-recording-bar"
+            aria-hidden="true"
+          >
+            <span
+              style={{ transform: `scaleX(${boomerangRecording.progress})` }}
+            />
+          </div>
+        </div>
+      ) : null}
 
       {streamState === 'error' && permissionState === 'granted' ? (
         <div className="preview-overlay">
@@ -114,4 +148,8 @@ export function CapturePreview({
       ) : null}
     </div>
   )
+}
+
+function formatSeconds(valueMs: number): string {
+  return (Math.max(0, valueMs) / 1000).toFixed(1)
 }

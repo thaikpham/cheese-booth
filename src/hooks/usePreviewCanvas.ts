@@ -24,36 +24,76 @@ export function usePreviewCanvas({
   useEffect(() => {
     const previewFrame = previewFrameRef.current
     const previewCanvas = previewCanvasRef.current
+    const video = videoRef.current
 
     if (!previewFrame || !previewCanvas) return
 
-    const resizeObserver = new ResizeObserver((entries) => {
-      const entry = entries[0]
+    const syncCanvasResolution = (frameRect?: DOMRectReadOnly) => {
       const canvas = previewCanvasRef.current
+      const currentVideo = videoRef.current
 
-      if (!entry || !canvas) return
+      if (!canvas || !previewFrame) return
 
       const dpr = window.devicePixelRatio || 1
-      const width = Math.max(1, Math.round(entry.contentRect.width * dpr))
-      const height = Math.max(1, Math.round(entry.contentRect.height * dpr))
+      const fallbackWidth = Math.max(
+        1,
+        Math.round((frameRect?.width ?? previewFrame.clientWidth) * dpr),
+      )
+      const fallbackHeight = Math.max(
+        1,
+        Math.round((frameRect?.height ?? previewFrame.clientHeight) * dpr),
+      )
+
+      let width = fallbackWidth
+      let height = fallbackHeight
+
+      if (
+        currentVideo &&
+        currentVideo.readyState >= 2 &&
+        currentVideo.videoWidth > 0 &&
+        currentVideo.videoHeight > 0
+      ) {
+        const output = getLargestAspectRect(
+          currentVideo.videoWidth,
+          currentVideo.videoHeight,
+          rotationQuarter,
+        )
+
+        width = output.width
+        height = output.height
+      }
 
       if (canvas.width !== width || canvas.height !== height) {
         canvas.width = width
         canvas.height = height
       }
+    }
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0]
+
+      if (!entry) return
+
+      syncCanvasResolution(entry.contentRect)
     })
+    const handleVideoMetadata = () => {
+      syncCanvasResolution()
+    }
 
     resizeObserver.observe(previewFrame)
+    video?.addEventListener('loadedmetadata', handleVideoMetadata)
+    video?.addEventListener('loadeddata', handleVideoMetadata)
+    syncCanvasResolution()
 
     return () => {
       resizeObserver.disconnect()
+      video?.removeEventListener('loadedmetadata', handleVideoMetadata)
+      video?.removeEventListener('loadeddata', handleVideoMetadata)
     }
-  }, [previewCanvasRef, previewFrameRef])
+  }, [previewCanvasRef, previewFrameRef, rotationQuarter, videoRef])
 
   useEffect(() => {
     let frameId = 0
-    const scratchCanvas = document.createElement('canvas')
-    const scratchContext = scratchCanvas.getContext('2d')
 
     const drawLoop = () => {
       const canvas = previewCanvasRef.current
@@ -70,42 +110,27 @@ export function usePreviewCanvas({
               rotationQuarter,
             )
 
-            if (scratchContext) {
-              if (
-                scratchCanvas.width !== output.width ||
-                scratchCanvas.height !== output.height
-              ) {
-                scratchCanvas.width = output.width
-                scratchCanvas.height = output.height
-              }
-
-              drawTransformedCover(
-                scratchContext,
-                video,
-                video.videoWidth,
-                video.videoHeight,
-                output.width,
-                output.height,
-                {
-                  rotationQuarter,
-                  flipHorizontal,
-                  flipVertical,
-                },
-              )
-
-              context.clearRect(0, 0, canvas.width, canvas.height)
-              context.drawImage(
-                scratchCanvas,
-                0,
-                0,
-                scratchCanvas.width,
-                scratchCanvas.height,
-                0,
-                0,
-                canvas.width,
-                canvas.height,
-              )
+            if (canvas.width !== output.width || canvas.height !== output.height) {
+              canvas.width = output.width
+              canvas.height = output.height
             }
+
+            context.imageSmoothingEnabled = true
+            context.imageSmoothingQuality = 'high'
+
+            drawTransformedCover(
+              context,
+              video,
+              video.videoWidth,
+              video.videoHeight,
+              canvas.width,
+              canvas.height,
+              {
+                rotationQuarter,
+                flipHorizontal,
+                flipVertical,
+              },
+            )
           } else {
             context.clearRect(0, 0, canvas.width, canvas.height)
             context.fillStyle = '#0c0f14'

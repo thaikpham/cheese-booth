@@ -5,18 +5,30 @@
 }
 
 html,
-body,
-#root {
+body {
+  width: 100vw;
+  height: 100dvh;
   margin: 0;
-  width: 100%;
-  min-height: 100dvh;
+  padding: 0;
+  overflow: hidden;
   background: #000;
-  color: var(--text);
 }
 
 body {
   font-family: 'Space Grotesk', sans-serif;
-  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#root {
+  width: 100vw;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  background: #000;
+  color: var(--text);
 }
 
 button,

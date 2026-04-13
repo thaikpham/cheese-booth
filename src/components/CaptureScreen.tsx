@@ -1,7 +1,10 @@
+import type { RefObject } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import cheeseLogo from '../../cheese_icon_transparent.svg'
 
 import type {
+  BoomerangRecordingIndicator,
+  CaptureOutcome,
   OperatorSettings,
   PermissionState,
   SourceDescriptor,
@@ -9,7 +12,9 @@ import type {
 } from '../types'
 import { APP_NAME, APP_SUBTITLE } from '../lib/branding'
 import { getRuntimeEnvironment } from '../lib/runtime'
+import { CaptureOutcomeModal } from './capture/CaptureOutcomeModal'
 import { CapturePreview } from './capture/CapturePreview'
+import { CapturePreviewTelemetry } from './capture/CapturePreviewTelemetry'
 import { CaptureSideRail } from './capture/CaptureSideRail'
 
 const SETTINGS_ROUTE = '/settings'
@@ -22,11 +27,22 @@ interface CaptureScreenProps {
   lastError: string | null
   isBusy: boolean
   countdownValue: number | null
+  boomerangRecording: BoomerangRecordingIndicator | null
+  captureOutcome: CaptureOutcome | null
   previewFrameRef: RefObject<HTMLDivElement | null>
   previewCanvasRef: RefObject<HTMLCanvasElement | null>
   onRetryPermission: () => void
   onRefreshSources: () => void
   onShutter: () => void
+  onModeChange: (mode: OperatorSettings['captureMode']) => void
+  onCountdownChange: (countdownSec: OperatorSettings['countdownSec']) => void
+  onSetRotationQuarter: (
+    rotationQuarter: OperatorSettings['rotationQuarter'],
+  ) => void
+  onFlipHorizontal: () => void
+  onFlipVertical: () => void
+  onDismissCaptureOutcome: () => void
+  onRetryCaptureOutcomeShare: () => void
 }
 
 export function CaptureScreen({
@@ -37,11 +53,20 @@ export function CaptureScreen({
   lastError,
   isBusy,
   countdownValue,
+  boomerangRecording,
+  captureOutcome,
   previewFrameRef,
   previewCanvasRef,
   onRetryPermission,
   onRefreshSources,
   onShutter,
+  onModeChange,
+  onCountdownChange,
+  onSetRotationQuarter,
+  onFlipHorizontal,
+  onFlipVertical,
+  onDismissCaptureOutcome,
+  onRetryCaptureOutcomeShare,
 }: CaptureScreenProps) {
   const navigate = useNavigate()
   const runtime = getRuntimeEnvironment(settings.outputDir)
@@ -50,16 +75,6 @@ export function CaptureScreen({
   const previewAspect = isPortrait ? '3 / 4' : '4 / 3'
   const captureModeLabel =
     settings.captureMode === 'photo' ? 'Photo' : 'Boomerang'
-  const settingsTelemetryLine = [
-    captureModeLabel.toUpperCase(),
-    `${settings.countdownSec}S`,
-    isPortrait ? '3:4' : '4:3',
-    `R${settings.rotationQuarter * 90}`,
-    `H${settings.flipHorizontal ? '1' : '0'}`,
-    `V${settings.flipVertical ? '1' : '0'}`,
-    runtime.telemetryLabel,
-    runtime.autoSaveReady ? 'SAVE' : 'NO-SAVE',
-  ].join('  ·  ')
   const sourceUnavailable = streamState === 'missing-device' || sources.length === 0
   const shutterDisabled =
     isBusy ||
@@ -76,7 +91,7 @@ export function CaptureScreen({
               className="capture-preview-wrapper"
               style={{ '--aspect-ratio': isPortrait ? 3 / 4 : 4 / 3 } as React.CSSProperties}
             >
-              <div className="capture-preview-meta" aria-hidden="true">
+              <div className="capture-preview-meta">
                 <div className="capture-settings-marquee capture-preview-brand">
                   <Link to="/" className="capture-preview-brand-link">
                     <img 
@@ -95,9 +110,17 @@ export function CaptureScreen({
                     </span>
                   </Link>
                 </div>
-                <p className="capture-settings-marquee capture-preview-marquee">
-                  {settingsTelemetryLine}
-                </p>
+                <CapturePreviewTelemetry
+                  settings={settings}
+                  runtimeTelemetryLabel={runtime.telemetryLabel}
+                  autoSaveReady={runtime.autoSaveReady}
+                  disabled={isBusy || countdownValue !== null}
+                  onModeChange={onModeChange}
+                  onCountdownChange={onCountdownChange}
+                  onSetRotationQuarter={onSetRotationQuarter}
+                  onFlipHorizontal={onFlipHorizontal}
+                  onFlipVertical={onFlipVertical}
+                />
               </div>
 
               <CapturePreview
@@ -109,6 +132,7 @@ export function CaptureScreen({
                 sourceUnavailable={sourceUnavailable}
                 lastError={lastError}
                 countdownValue={countdownValue}
+                boomerangRecording={boomerangRecording}
                 onRetryPermission={onRetryPermission}
                 onRefreshSources={onRefreshSources}
               />
@@ -123,6 +147,14 @@ export function CaptureScreen({
           />
         </div>
       </div>
+
+      {captureOutcome ? (
+        <CaptureOutcomeModal
+          outcome={captureOutcome}
+          onClose={onDismissCaptureOutcome}
+          onRetryShare={onRetryCaptureOutcomeShare}
+        />
+      ) : null}
     </section>
   )
 }

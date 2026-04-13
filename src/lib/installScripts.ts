@@ -218,11 +218,3 @@ fi
 echo "Hoàn tất cài đặt."`,
   },
 ]
-
-export function buildCombinedInstallScripts(
-  snippets: InstallScriptSnippet[] = INSTALL_SCRIPT_SNIPPETS,
-): string {
-  return snippets
-    .map((snippet) => [`### ${snippet.platform}`, snippet.script].join('\n\n'))
-    .join('\n\n' + '='.repeat(72) + '\n\n')
-}

@@ -20,8 +20,9 @@ export function LandingPage() {
         <div className="landing-text-content">
           <h1 className="landing-title">CHEESE BOOTH</h1>
           <div className="landing-subtitle">
-            <span className="line1">Another project of Colorlab</span>
-            <span className="line2">by Sony Electronics 🇻🇳</span>
+            <span className="line1">Another project from Colorlab</span>
+            <span className="line2">Print-Free Photobooth - Road to Zero</span>
+            <span className="line3">🇯🇵 Sony Electronics 🇻🇳</span>
           </div>
         </div>
       </div>

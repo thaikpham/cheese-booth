@@ -4,7 +4,6 @@ import cheeseLogo from '../cheese_icon_transparent.svg'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 import { CaptureScreen } from './components/CaptureScreen'
-import { DownloadPage } from './components/DownloadPage'
 import { LandingPage } from './components/LandingPage'
 import { SettingsDashboard } from './components/SettingsDashboard'
 import { useKioskBootstrap } from './hooks/useKioskBootstrap'
@@ -14,7 +13,6 @@ import { APP_NAME, APP_SUBTITLE } from './lib/branding'
 
 const CAPTURE_ROUTE = '/capture'
 const SETTINGS_ROUTE = '/settings'
-const DOWNLOAD_ROUTE = '/download'
 
 function KioskShell() {
   const {
@@ -24,6 +22,8 @@ function KioskShell() {
     session,
     isBusy,
     countdownValue,
+    boomerangRecording,
+    captureOutcome,
     previewFrameRef,
     previewCanvasRef,
     videoRef,
@@ -32,8 +32,11 @@ function KioskShell() {
     refreshSources,
     retryPermission,
     handleShutter,
+    dismissCaptureOutcome,
+    retryCaptureOutcomeShare,
     setMode,
     setCountdown,
+    setRotationQuarter,
     rotate,
     toggleFlipHorizontal,
     toggleFlipVertical,
@@ -76,6 +79,8 @@ function KioskShell() {
               lastError={session.lastError}
               isBusy={isBusy}
               countdownValue={countdownValue}
+              boomerangRecording={boomerangRecording}
+              captureOutcome={captureOutcome}
               previewFrameRef={previewFrameRef}
               previewCanvasRef={previewCanvasRef}
               onRetryPermission={() => {
@@ -87,6 +92,13 @@ function KioskShell() {
               onShutter={() => {
                 void handleShutter()
               }}
+              onModeChange={setMode}
+              onCountdownChange={setCountdown}
+              onSetRotationQuarter={setRotationQuarter}
+              onFlipHorizontal={toggleFlipHorizontal}
+              onFlipVertical={toggleFlipVertical}
+              onDismissCaptureOutcome={dismissCaptureOutcome}
+              onRetryCaptureOutcomeShare={retryCaptureOutcomeShare}
             />
           }
         />
@@ -133,11 +145,7 @@ function App() {
     return <LandingPage />
   }
 
-  return (
-    <main className="app-shell">
-      {location.pathname === DOWNLOAD_ROUTE ? <DownloadPage /> : <KioskShell />}
-    </main>
-  )
+  return <main className="app-shell"><KioskShell /></main>
 }
 
 export default App

@@ -1,16 +1,37 @@
-import { useState, type Dispatch, type RefObject, type SetStateAction } from 'react'
+import {
+  startTransition,
+  useEffect,
+  useState,
+  type Dispatch,
+  type RefObject,
+  type SetStateAction,
+} from 'react'
 
 import { playCountdownCue, playShutterCue } from '../lib/captureSounds'
-import { renderBoomerangFromVideo, renderPhotoFromVideo } from '../lib/media'
+import {
+  BOOMERANG_DURATION_MS,
+  renderBoomerangFromVideo,
+  renderPhotoFromVideo,
+} from '../lib/media'
 import { pickOutputDirectory, saveCaptureToOutputDir } from '../lib/storage'
 import { getRuntimeEnvironment } from '../lib/runtime'
 import type {
+  BoomerangRecordingIndicator,
   CaptureMode,
+  CaptureCloudShare,
+  CaptureOutcome,
   CountdownSec,
   OperatorSettings,
   SessionState,
 } from '../types'
 import { getMediaErrorMessage, transformFromSettings } from './kioskControllerUtils'
+import {
+  BROWSER_CLOUD_STORAGE_PENDING_LABEL,
+  type PendingCloudShareUpload,
+  useCaptureCloudShare,
+} from './useCaptureCloudShare'
+
+const SHUTTER_CAPTURE_DELAY_MS = 180
 
 interface UseCaptureActionsOptions {
   settings: OperatorSettings
@@ -23,10 +44,15 @@ interface UseCaptureActionsOptions {
 interface UseCaptureActionsResult {
   isBusy: boolean
   countdownValue: number | null
+  boomerangRecording: BoomerangRecordingIndicator | null
+  captureOutcome: CaptureOutcome | null
   chooseOutputDir: () => Promise<string | null>
   handleShutter: () => Promise<boolean>
+  dismissCaptureOutcome: () => void
+  retryCaptureOutcomeShare: () => void
   setMode: (captureMode: CaptureMode) => void
   setCountdown: (countdownSec: CountdownSec) => void
+  setRotationQuarter: (rotationQuarter: OperatorSettings['rotationQuarter']) => void
   rotate: () => void
   toggleFlipHorizontal: () => void
   toggleFlipVertical: () => void
@@ -42,6 +68,25 @@ export function useCaptureActions({
 }: UseCaptureActionsOptions): UseCaptureActionsResult {
   const [isBusy, setIsBusy] = useState(false)
   const [countdownValue, setCountdownValue] = useState<number | null>(null)
+  const [boomerangRecording, setBoomerangRecording] =
+    useState<BoomerangRecordingIndicator | null>(null)
+  const [captureOutcome, setCaptureOutcome] = useState<CaptureOutcome | null>(null)
+  const {
+    resetCaptureOutcomeShare,
+    startBrowserCloudShare,
+    retryCaptureOutcomeShare,
+  } = useCaptureCloudShare({
+    setCaptureOutcome,
+  })
+  const previewUrl = captureOutcome?.previewUrl
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl?.startsWith('blob:')) {
+        window.URL.revokeObjectURL(previewUrl)
+      }
+    }
+  }, [previewUrl])
 
   async function chooseOutputDir(): Promise<string | null> {
     try {
@@ -80,27 +125,25 @@ export function useCaptureActions({
         void playCountdownCue(tick)
       }
       await new Promise((resolve) => {
-        window.setTimeout(resolve, tick === 0 ? 350 : 1000)
+        window.setTimeout(resolve, tick === 0 ? SHUTTER_CAPTURE_DELAY_MS : 1000)
       })
     }
 
     setCountdownValue(null)
   }
 
-  async function persistCapture(
+  async function persistDesktopCapture(
     kind: CaptureMode,
     blob: Blob,
     extension: string,
     createdAt: number,
   ): Promise<string> {
-    const runtime = getRuntimeEnvironment(settings.outputDir)
-
-    if (runtime.kind === 'desktop' && !runtime.autoSaveReady) {
+    if (!settings.outputDir) {
       throw new Error('Chưa chọn thư mục lưu media.')
     }
 
     return saveCaptureToOutputDir(
-      settings.outputDir ?? runtime.outputTargetLabel,
+      settings.outputDir,
       kind,
       blob,
       extension,
@@ -108,7 +151,11 @@ export function useCaptureActions({
     )
   }
 
-  async function captureAndPersist(kind: CaptureMode): Promise<void> {
+  async function captureAndPersist(kind: CaptureMode): Promise<{
+    outcome: CaptureOutcome
+    shouldUploadToCloud: boolean
+    rendered: PendingCloudShareUpload
+  }> {
     const video = videoRef.current
 
     if (!video || video.readyState < 2) {
@@ -118,20 +165,89 @@ export function useCaptureActions({
     const rendered =
       kind === 'photo'
         ? await renderPhotoFromVideo(video, transformFromSettings(settings))
-        : await renderBoomerangFromVideo(video, transformFromSettings(settings))
+        : await renderBoomerangFromVideo(video, transformFromSettings(settings), {
+            onProgress: (progress) => {
+              startTransition(() => {
+                setBoomerangRecording(progress)
+              })
+            },
+          })
 
-    await persistCapture(kind, rendered.blob, rendered.extension, Date.now())
+    const runtime = getRuntimeEnvironment(settings.outputDir)
+    let share: CaptureCloudShare = { status: 'idle' }
+    let savedPath = settings.outputDir ?? runtime.outputTargetLabel
+    let shouldUploadToCloud = false
+
+    if (runtime.kind === 'desktop') {
+      if (!runtime.autoSaveReady) {
+        throw new Error('Chưa chọn thư mục lưu media.')
+      }
+
+      savedPath = await persistDesktopCapture(
+        kind,
+        rendered.blob,
+        rendered.extension,
+        Date.now(),
+      )
+    } else {
+      savedPath = BROWSER_CLOUD_STORAGE_PENDING_LABEL
+      share = { status: 'uploading' }
+      shouldUploadToCloud = true
+    }
+
+    return {
+      outcome: {
+        kind,
+        previewUrl: window.URL.createObjectURL(rendered.blob),
+        mimeType: rendered.mimeType,
+        width: rendered.width,
+        height: rendered.height,
+        savedPath,
+        share,
+      },
+      shouldUploadToCloud,
+      rendered: {
+        ...rendered,
+        kind,
+      },
+    }
+  }
+
+  function dismissCaptureOutcome(): void {
+    resetCaptureOutcomeShare()
+    setCaptureOutcome(null)
   }
 
   async function handleShutter(): Promise<boolean> {
     if (isBusy) return false
 
     setIsBusy(true)
+    setBoomerangRecording(null)
+    dismissCaptureOutcome()
     setSession((current) => ({ ...current, lastError: null }))
 
     try {
       await runCountdown()
-      await captureAndPersist(settings.captureMode)
+
+      if (settings.captureMode === 'boomerang') {
+        setBoomerangRecording({
+          elapsedMs: 0,
+          totalMs: BOOMERANG_DURATION_MS,
+          remainingMs: BOOMERANG_DURATION_MS,
+          progress: 0,
+        })
+      }
+
+      const { outcome, shouldUploadToCloud, rendered } = await captureAndPersist(
+        settings.captureMode,
+      )
+
+      setCaptureOutcome(outcome)
+
+      if (shouldUploadToCloud) {
+        startBrowserCloudShare(rendered)
+      }
+
       return true
     } catch (error) {
       setSession((current) => ({
@@ -140,6 +256,7 @@ export function useCaptureActions({
       }))
     } finally {
       setCountdownValue(null)
+      setBoomerangRecording(null)
       setIsBusy(false)
     }
 
@@ -149,10 +266,16 @@ export function useCaptureActions({
   return {
     isBusy,
     countdownValue,
+    boomerangRecording,
+    captureOutcome,
     chooseOutputDir,
     handleShutter,
+    dismissCaptureOutcome,
+    retryCaptureOutcomeShare,
     setMode: (captureMode: CaptureMode) => updateSettings({ captureMode }),
     setCountdown: (countdownSec: CountdownSec) => updateSettings({ countdownSec }),
+    setRotationQuarter: (rotationQuarter: OperatorSettings['rotationQuarter']) =>
+      updateSettings({ rotationQuarter }),
     rotate: () =>
       setSettings((current) => ({
         ...current,

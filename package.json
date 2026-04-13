@@ -13,14 +13,20 @@
     "tauri:build": "tauri build"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1029.0",
+    "@aws-sdk/s3-request-presigner": "^3.1029.0",
     "@fontsource/ibm-plex-mono": "^5.2.7",
     "@fontsource/red-hat-mono": "^5.2.8",
     "@fontsource/space-grotesk": "^5.2.10",
+    "@neondatabase/serverless": "^1.0.2",
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-dialog": "^2.7.0",
     "@tauri-apps/plugin-fs": "^2.5.0",
     "@tauri-apps/plugin-store": "^2.4.2",
+    "h264-mp4-encoder": "^1.0.12",
     "lucide-react": "^1.8.0",
+    "postgres": "^3.4.9",
+    "qrcode": "^1.5.4",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.9.4"
@@ -29,6 +35,7 @@
     "@eslint/js": "^9.39.4",
     "@tauri-apps/cli": "^2.10.1",
     "@types/node": "^24.12.2",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",

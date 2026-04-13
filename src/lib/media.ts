@@ -1,10 +1,12 @@
-import type { TransformSettings } from '../types'
+import type { BoomerangRecordingIndicator, TransformSettings } from '../types'
+import { createH264Mp4Encoder } from './h264Mp4Encoder'
 
 const PHOTO_LANDSCAPE_RATIO = 4 / 3
 const PHOTO_PORTRAIT_RATIO = 3 / 4
-const BOOMERANG_DURATION_MS = 3_000
+export const BOOMERANG_DURATION_MS = 3_000
 const BOOMERANG_FPS = 15
 const BOOMERANG_MAX_LONG_EDGE = 1920
+const BOOMERANG_H264_BITRATE_KBPS = 8000
 
 export interface RenderedCapture {
   blob: Blob
@@ -16,6 +18,10 @@ export interface RenderedCapture {
 
 type SampledFrame = CanvasImageSource & {
   close?: () => void
+}
+
+interface RenderBoomerangOptions {
+  onProgress?: (progress: BoomerangRecordingIndicator) => void
 }
 
 function wait(ms: number): Promise<void> {
@@ -105,6 +111,22 @@ function constrainLongEdge(
     width: Math.max(1, Math.round(width * scale)),
     height: Math.max(1, Math.round(height * scale)),
   }
+}
+
+function ensureEvenDimensions(
+  width: number,
+  height: number,
+): { width: number; height: number } {
+  return {
+    width: makeEvenDimension(width),
+    height: makeEvenDimension(height),
+  }
+}
+
+function makeEvenDimension(value: number): number {
+  const rounded = Math.max(2, Math.round(value))
+
+  return rounded % 2 === 0 ? rounded : rounded - 1
 }
 
 function getCenteredAspectCrop(
@@ -240,29 +262,6 @@ export async function renderPhotoFromVideo(
   }
 }
 
-function pickRecorderMimeType(): { mimeType: string; extension: string } {
-  const candidates = [
-    { mimeType: 'video/webm;codecs=vp9', extension: 'webm' },
-    { mimeType: 'video/webm;codecs=vp8', extension: 'webm' },
-    { mimeType: 'video/webm', extension: 'webm' },
-    { mimeType: 'video/mp4', extension: 'mp4' },
-  ]
-
-  for (const candidate of candidates) {
-    if (
-      typeof MediaRecorder !== 'undefined' &&
-      MediaRecorder.isTypeSupported(candidate.mimeType)
-    ) {
-      return candidate
-    }
-  }
-
-  return {
-    mimeType: '',
-    extension: 'webm',
-  }
-}
-
 async function cloneSampleFrame(canvas: HTMLCanvasElement): Promise<SampledFrame> {
   if (typeof createImageBitmap === 'function') {
     return createImageBitmap(canvas)
@@ -285,16 +284,22 @@ async function cloneSampleFrame(canvas: HTMLCanvasElement): Promise<SampledFrame
 export async function renderBoomerangFromVideo(
   video: HTMLVideoElement,
   transform: TransformSettings,
+  options: RenderBoomerangOptions = {},
 ): Promise<RenderedCapture> {
+  const { onProgress } = options
   const baseOutput = getLargestAspectRect(
     video.videoWidth,
     video.videoHeight,
     transform.rotationQuarter,
   )
-  const output = constrainLongEdge(
+  const constrainedOutput = constrainLongEdge(
     baseOutput.width,
     baseOutput.height,
     BOOMERANG_MAX_LONG_EDGE,
+  )
+  const output = ensureEvenDimensions(
+    constrainedOutput.width,
+    constrainedOutput.height,
   )
   const sampleCanvas = document.createElement('canvas')
   const sampleContext = sampleCanvas.getContext('2d')
@@ -310,6 +315,13 @@ export async function renderBoomerangFromVideo(
   const frameInterval = 1000 / BOOMERANG_FPS
   const totalFrames = Math.max(1, Math.round(BOOMERANG_DURATION_MS / frameInterval))
   const sampleStart = performance.now()
+
+  onProgress?.({
+    elapsedMs: 0,
+    totalMs: BOOMERANG_DURATION_MS,
+    remainingMs: BOOMERANG_DURATION_MS,
+    progress: 0,
+  })
 
   for (let frameIndex = 0; frameIndex < totalFrames; frameIndex += 1) {
     const nextDeadline = sampleStart + frameIndex * frameInterval
@@ -330,6 +342,18 @@ export async function renderBoomerangFromVideo(
     )
 
     sampledFrames.push(await cloneSampleFrame(sampleCanvas))
+
+    const elapsedMs = Math.min(
+      BOOMERANG_DURATION_MS,
+      Math.max(0, performance.now() - sampleStart),
+    )
+
+    onProgress?.({
+      elapsedMs,
+      totalMs: BOOMERANG_DURATION_MS,
+      remainingMs: Math.max(0, BOOMERANG_DURATION_MS - elapsedMs),
+      progress: Math.min(1, elapsedMs / BOOMERANG_DURATION_MS),
+    })
   }
 
   if (sampledFrames.length === 0) {
@@ -338,7 +362,9 @@ export async function renderBoomerangFromVideo(
 
   const sequence = sampledFrames.concat(sampledFrames.slice(1, -1).reverse())
   const playbackCanvas = document.createElement('canvas')
-  const playbackContext = playbackCanvas.getContext('2d')
+  const playbackContext = playbackCanvas.getContext('2d', {
+    willReadFrequently: true,
+  })
 
   if (!playbackContext) {
     sampledFrames.forEach((frame) => frame.close?.())
@@ -347,67 +373,63 @@ export async function renderBoomerangFromVideo(
 
   playbackCanvas.width = output.width
   playbackCanvas.height = output.height
+  let encoder: Awaited<ReturnType<typeof createH264Mp4Encoder>> | null = null
 
-  if (typeof playbackCanvas.captureStream !== 'function') {
-    sampledFrames.forEach((frame) => frame.close?.())
-    throw new Error('Runtime hiện tại chưa hỗ trợ ghi boomerang.')
-  }
+  try {
+    encoder = await createH264Mp4Encoder()
+    encoder.outputFilename = `boomerang-${Date.now()}.mp4`
+    encoder.width = output.width
+    encoder.height = output.height
+    encoder.frameRate = BOOMERANG_FPS
+    encoder.groupOfPictures = BOOMERANG_FPS
+    encoder.kbps = BOOMERANG_H264_BITRATE_KBPS
+    encoder.speed = 6
+    encoder.quantizationParameter = 24
+    encoder.initialize()
 
-  if (typeof MediaRecorder === 'undefined') {
-    sampledFrames.forEach((frame) => frame.close?.())
-    throw new Error('Runtime hiện tại chưa hỗ trợ ghi boomerang.')
-  }
+    for (const frame of sequence) {
+      playbackContext.clearRect(0, 0, output.width, output.height)
+      playbackContext.drawImage(frame, 0, 0, output.width, output.height)
 
-  const stream = playbackCanvas.captureStream(BOOMERANG_FPS)
-  const { mimeType, extension } = pickRecorderMimeType()
+      const frameBytes = playbackContext.getImageData(
+        0,
+        0,
+        output.width,
+        output.height,
+      ).data
 
-  const recorder = mimeType
-    ? new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8000000 })
-    : new MediaRecorder(stream, { videoBitsPerSecond: 8000000 })
-
-  const chunks: Blob[] = []
-  const finishedBlob = new Promise<Blob>((resolve) => {
-    recorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        chunks.push(event.data)
-      }
+      encoder.addFrameRgba(frameBytes)
     }
 
-    recorder.onstop = () => {
-      resolve(
-        new Blob(chunks, {
-          type: recorder.mimeType || mimeType || 'video/webm',
-        }),
-      )
+    encoder.finalize()
+
+    const mp4Bytes = encoder.FS.readFile(encoder.outputFilename)
+    const normalizedMp4Bytes = Uint8Array.from(mp4Bytes)
+    const blob = new Blob([normalizedMp4Bytes], {
+      type: 'video/mp4',
+    })
+
+    try {
+      encoder.FS.unlink(encoder.outputFilename)
+    } catch {
+      // Best-effort cleanup in the encoder virtual FS.
     }
-  })
 
-  recorder.start(frameInterval)
-
-  for (const frame of sequence) {
-    playbackContext.clearRect(0, 0, output.width, output.height)
-    playbackContext.drawImage(frame, 0, 0, output.width, output.height)
-    await wait(frameInterval)
-  }
-
-  await wait(frameInterval)
-  recorder.stop()
-
-  const [track] = stream.getTracks()
-
-  if (track) {
-    track.stop()
-  }
-
-  const blob = await finishedBlob
-
-  sampledFrames.forEach((frame) => frame.close?.())
-
-  return {
-    blob,
-    width: output.width,
-    height: output.height,
-    mimeType: blob.type || recorder.mimeType || mimeType || 'video/webm',
-    extension,
+    return {
+      blob,
+      width: output.width,
+      height: output.height,
+      mimeType: 'video/mp4',
+      extension: 'mp4',
+    }
+  } catch (error) {
+    throw new Error(
+      error instanceof Error
+        ? `Không thể encode boomerang sang MP4/H.264: ${error.message}`
+        : 'Không thể encode boomerang sang MP4/H.264.',
+    )
+  } finally {
+    sampledFrames.forEach((frame) => frame.close?.())
+    encoder?.delete()
   }
 }

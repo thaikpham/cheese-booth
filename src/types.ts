@@ -34,6 +34,33 @@ export interface TransformSettings {
   flipVertical: boolean
 }
 
+export interface BoomerangRecordingIndicator {
+  elapsedMs: number
+  totalMs: number
+  remainingMs: number
+  progress: number
+}
+
+export type CaptureShareStatus = 'idle' | 'uploading' | 'ready' | 'error'
+
+export interface CaptureCloudShare {
+  status: CaptureShareStatus
+  downloadToken?: string
+  downloadUrl?: string
+  expiresAt?: string
+  errorMessage?: string
+}
+
+export interface CaptureOutcome {
+  kind: CaptureMode
+  previewUrl: string
+  mimeType: string
+  width: number
+  height: number
+  savedPath: string
+  share: CaptureCloudShare
+}
+
 export const DEFAULT_OPERATOR_SETTINGS: OperatorSettings = {
   captureMode: 'photo',
   deviceId: null,

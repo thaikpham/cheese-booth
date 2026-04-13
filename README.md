@@ -24,6 +24,12 @@ Run the web UI only:
 npm run dev
 ```
 
+Cloud share + QR browser flow needs Vercel Functions, so for full end-to-end local testing prefer:
+
+```bash
+vercel dev
+```
+
 Run the desktop app:
 
 ```bash
@@ -35,6 +41,21 @@ Create a local production build:
 ```bash
 npm run tauri:build
 ```
+
+## Cloud Share + QR
+
+Browser capture can now:
+
+- preview the result immediately in the modal from a local blob URL
+- upload the file to a private Cloudflare R2 bucket
+- show a QR code for a 24-hour tokenized download link
+- expire and clean up files through DB-backed app logic
+
+Setup and deploy guide:
+
+- Checklist: [docs/vercel-r2-cloud-share-checklist.md](./docs/vercel-r2-cloud-share-checklist.md)
+- Local quickstart: [docs/vercel-dev-cloud-share-quickstart.md](./docs/vercel-dev-cloud-share-quickstart.md)
+- Env template: [.env.example](./.env.example)
 
 ## GitHub Releases
 

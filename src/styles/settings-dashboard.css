@@ -356,6 +356,194 @@
   opacity: 0.88;
 }
 
+.release-download-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 100%;
+  padding: 20px;
+  border: 1px solid rgba(16, 19, 34, 0.1);
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 253, 0.86));
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+.release-download-card.compact {
+  padding: 16px;
+  border-radius: 18px;
+}
+
+.release-download-card.highlighted {
+  border-color: rgba(227, 82, 5, 0.28);
+  box-shadow:
+    0 16px 30px rgba(227, 82, 5, 0.08),
+    0 8px 16px rgba(15, 23, 42, 0.04);
+}
+
+.release-download-card.disabled {
+  opacity: 0.8;
+}
+
+.release-download-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.release-download-card-title {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.release-download-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: rgba(16, 19, 34, 0.06);
+  color: #111827;
+}
+
+.release-download-card-icon svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+}
+
+.release-download-card-title h3 {
+  margin: 0;
+  font-size: 1.06rem;
+  letter-spacing: -0.03em;
+}
+
+.release-download-card-title p {
+  margin: 6px 0 0;
+  color: rgba(16, 19, 34, 0.66);
+  font-size: 0.84rem;
+  line-height: 1.65;
+}
+
+.release-download-card-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(227, 82, 5, 0.12);
+  color: #a8430d;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.release-download-card-hint {
+  margin: 0;
+  color: rgba(16, 19, 34, 0.8);
+  font-size: 0.84rem;
+  line-height: 1.65;
+}
+
+.release-download-card-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+.release-download-card-note svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.release-download-card-note.warn {
+  background: rgba(255, 241, 214, 0.78);
+  color: #8f5d06;
+}
+
+.release-download-card-note.neutral {
+  background: rgba(241, 244, 248, 0.82);
+  color: rgba(16, 19, 34, 0.68);
+}
+
+.release-download-card-note.disabled {
+  background: rgba(250, 232, 232, 0.85);
+  color: #8c2d2d;
+}
+
+.release-download-card-variants {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.release-download-card.compact .release-download-card-variants {
+  grid-template-columns: 1fr;
+}
+
+.release-download-variant {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(16, 19, 34, 0.1);
+  text-decoration: none;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.release-download-variant.ready {
+  background: rgba(255, 255, 255, 0.95);
+  color: #101322;
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.release-download-variant.ready:hover {
+  transform: translateY(-1px);
+  border-color: rgba(68, 118, 255, 0.24);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+}
+
+.release-download-variant.missing {
+  background: rgba(244, 246, 250, 0.78);
+  color: rgba(16, 19, 34, 0.54);
+}
+
+.release-download-card-foot {
+  margin-top: auto;
+}
+
+.release-download-card-foot-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(16, 19, 34, 0.62);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .sd-install-card {
   display: flex;
   flex-direction: column;
@@ -393,69 +581,6 @@
 .sd-install-card-btn.copied {
   background: var(--accent-soft);
   border-color: oklch(0.82 0.08 264);
-}
-
-.sd-install-card.highlighted {
-  border-color: var(--accent);
-  background: linear-gradient(180deg, var(--accent-soft), transparent 80%);
-}
-
-.sd-install-current-badge {
-  display: inline-block;
-  margin-top: 4px;
-  color: var(--accent);
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.sd-install-variants {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 6px;
-}
-
-.sd-install-variant-link {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  height: 38px;
-  padding: 0 12px;
-  border-radius: calc(var(--radius) - 2px);
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--fg);
-  font-size: 0.78rem;
-  font-weight: 600;
-  text-decoration: none;
-  font-family: 'IBM Plex Mono', ui-monospace, sans-serif;
-  transition:
-    transform 140ms ease,
-    border-color 140ms ease,
-    box-shadow 140ms ease;
-}
-
-.sd-install-variant-link:hover {
-  transform: translateY(-1px);
-  border-color: var(--accent);
-  box-shadow: 0 4px 12px rgba(27, 31, 35, 0.04);
-  color: var(--accent);
-}
-
-.sd-install-variant-link.missing {
-  background: var(--muted);
-  color: var(--muted-fg);
-  border-color: transparent;
-  pointer-events: none;
-}
-
-.sd-variant-status-text {
-  font-size: 0.72rem;
-  font-weight: 500;
-  opacity: 0.7;
 }
 
 .sd-install-card-head {
@@ -1121,38 +1246,64 @@ select.sd-input {
   max-height: 100%;
 }
 
-.sd-download-tabs {
+.sd-download-toggle {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 20px;
-}
-
-.sd-download-tab {
-  flex: 1;
-  padding: 12px 16px;
+  padding: 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--card);
-  color: var(--muted-fg);
-  font-family: inherit;
+}
+
+.sd-download-toggle-label {
+  flex: 1;
   font-size: 0.86rem;
   font-weight: 600;
+  color: var(--muted-fg);
+  text-align: center;
+}
+
+.sd-download-toggle-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 52px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: var(--muted);
   cursor: pointer;
-  transition:
-    background-color 150ms ease,
-    color 150ms ease,
-    border-color 150ms ease;
+  transition: background-color 200ms ease;
 }
 
-.sd-download-tab:hover:not(.active) {
-  border-color: var(--accent);
-  color: var(--fg);
+.sd-download-toggle-switch:hover {
+  background: oklch(0.85 0 0);
 }
 
-.sd-download-tab.active {
-  background: var(--fg);
-  border-color: var(--fg);
-  color: #fff;
+.sd-download-toggle-switch.active {
+  background: var(--accent);
+}
+
+.sd-download-toggle-switch.active:hover {
+  background: oklch(0.5 0.14 264);
+}
+
+.sd-toggle-slider {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  transition: transform 200ms ease;
+}
+
+.sd-download-toggle-switch.active .sd-toggle-slider {
+  transform: translateX(24px);
 }
 
 .sd-download-panel .sd-install-section {
@@ -1210,6 +1361,14 @@ select.sd-input {
 
   .sd-install-grid {
     grid-template-columns: 1fr;
+  }
+
+  .release-download-card-head {
+    flex-direction: column;
+  }
+
+  .release-download-card-badge {
+    align-self: flex-start;
   }
 }
 

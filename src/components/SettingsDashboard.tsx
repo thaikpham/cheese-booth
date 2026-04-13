@@ -1,22 +1,7 @@
 import {
   ArrowLeft,
-  Camera,
-  Check,
-  Clock3,
-  CodeXml,
-  Download,
-  FlipHorizontal2,
-  FlipVertical2,
-  FolderOpen,
-  HardDrive,
-  LayoutDashboard,
-  Monitor,
-  RefreshCw,
-  RotateCw,
-  Settings2,
-  Video,
 } from 'lucide-react'
-import { useState, type RefObject } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { Link } from 'react-router-dom'
 
 import type {
@@ -30,30 +15,30 @@ import type {
 import cheeseLogo from '../../cheese_icon_transparent.svg'
 import { useLatestReleaseCatalog } from '../hooks/useLatestReleaseCatalog'
 import { APP_NAME, APP_SUBTITLE } from '../lib/branding'
-import { INSTALL_SCRIPT_SNIPPETS } from '../lib/installScripts'
 import {
-  RELEASES_PAGE_URL,
   detectClientPlatform,
   getReleaseStatusDescriptor,
 } from '../lib/releaseCatalog'
 import { getRuntimeEnvironment } from '../lib/runtime'
-import { PlatformIcon } from './download/PlatformIcon'
-import { CapturePreview } from './capture/CapturePreview'
+import {
+  SettingsDashboardCameraPanel,
+  SettingsDashboardCapturePanel,
+  SettingsDashboardDownloadPanel,
+  SettingsDashboardOutputPanel,
+  SettingsDashboardOverviewPanel,
+  SettingsDashboardTransformPanel,
+} from './settings-dashboard/SettingsDashboardPanels'
+import { SettingsDashboardNav } from './settings-dashboard/SettingsDashboardNav'
+import { SettingsDashboardPreview } from './settings-dashboard/SettingsDashboardPreview'
+import {
+  copyTextToClipboard,
+  getPermissionSummary,
+  getStreamSummary,
+  type SectionId,
+  type DownloadTab,
+} from './settings-dashboard/settingsDashboardUtils'
 
-const COUNTDOWN_OPTIONS: CountdownSec[] = [3, 5, 10]
 const CAPTURE_ROUTE = '/capture'
-const DOWNLOAD_ROUTE = '/download'
-
-type SectionId = 'overview' | 'capture' | 'camera' | 'output' | 'transform' | 'download'
-
-const SECTION_LINKS: { id: SectionId; label: string; icon: typeof Camera }[] = [
-  { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
-  { id: 'capture', label: 'Chế độ chụp', icon: Camera },
-  { id: 'camera', label: 'Camera', icon: Monitor },
-  { id: 'output', label: 'Thư mục lưu', icon: HardDrive },
-  { id: 'transform', label: 'Xoay / Lật', icon: RotateCw },
-  { id: 'download', label: 'Tải ứng dụng', icon: Download },
-]
 
 interface SettingsDashboardProps {
   settings: OperatorSettings
@@ -95,10 +80,18 @@ export function SettingsDashboard({
   onRefreshSources,
 }: SettingsDashboardProps) {
   const [activeSection, setActiveSection] = useState<SectionId>('overview')
-  const [downloadTab, setDownloadTab] = useState<'end-user' | 'scripts'>('end-user')
-  const persistedOutputDir = settings.outputDir ?? ''
+  const [downloadTab, setDownloadTab] = useState<DownloadTab>('end-user')
   const [copiedScriptId, setCopiedScriptId] = useState<string | null>(null)
+  const copiedResetTimerRef = useRef<number | null>(null)
   const releaseCatalog = useLatestReleaseCatalog()
+
+  useEffect(() => {
+    return () => {
+      if (copiedResetTimerRef.current !== null) {
+        window.clearTimeout(copiedResetTimerRef.current)
+      }
+    }
+  }, [])
 
   const isPortrait = settings.rotationQuarter % 2 === 1
   const previewAspect = isPortrait ? '3 / 4' : '4 / 3'
@@ -109,548 +102,113 @@ export function SettingsDashboard({
   const streamSummary = getStreamSummary(streamState)
   const orientationLabel = isPortrait ? 'Portrait' : 'Landscape'
   const runtime = getRuntimeEnvironment(settings.outputDir)
-  const desktopSaveEnabled = runtime.supportsOutputDirectorySelection
-  const currentOutputLabel = runtime.outputTargetLabel
-  const outputDirValue = desktopSaveEnabled
-    ? persistedOutputDir
-    : runtime.outputTargetLabel
-  const runtimeModeLabel = runtime.label
-  const autoSaveSummary = runtime.autoSaveSummary
   const currentPlatform = detectClientPlatform()
   const releaseStatus = getReleaseStatusDescriptor(releaseCatalog)
-
-  async function handlePickOutputDir(): Promise<void> {
-    await onPickOutputDir()
-  }
 
   async function handleCopyInstallScript(
     scriptId: string,
     script: string,
   ): Promise<void> {
-    await copyTextToClipboard(script)
-    setCopiedScriptId(scriptId)
+    try {
+      await copyTextToClipboard(script)
+      setCopiedScriptId(scriptId)
 
-    window.setTimeout(() => {
-      setCopiedScriptId((current) => (current === scriptId ? null : current))
-    }, 1600)
+      if (copiedResetTimerRef.current !== null) {
+        window.clearTimeout(copiedResetTimerRef.current)
+      }
+
+      copiedResetTimerRef.current = window.setTimeout(() => {
+        setCopiedScriptId((current) => (current === scriptId ? null : current))
+        copiedResetTimerRef.current = null
+      }, 1600)
+    } catch (error) {
+      console.error('Không thể sao chép script cài đặt.', error)
+    }
   }
-
-  function renderReleaseStatusBanner() {
-    return (
-      <div className={`sd-release-banner sd-release-banner--${releaseStatus.tone}`}>
-        <div>
-          <h4>{releaseStatus.title}</h4>
-          <p>{releaseStatus.message}</p>
-        </div>
-        <a
-          className="sd-release-link"
-          href={releaseCatalog?.htmlUrl ?? RELEASES_PAGE_URL}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {releaseCatalog?.state === 'ready' ? 'Xem release' : 'Mở trang Releases'}
-        </a>
-      </div>
-    )
-  }
-
-  /* ── Section renderers ── */
 
   function renderContent() {
     switch (activeSection) {
       case 'overview':
         return (
-          <div className="sd-panel">
-            <header className="sd-panel-header">
-              <h2>Tổng quan</h2>
-              <p className="sd-panel-sub">Trạng thái hệ thống hiện tại</p>
-            </header>
-
-            <div className="sd-kv-grid">
-              <div className="sd-kv">
-                <span className="sd-kv-label">Chế độ chụp</span>
-                <span className="sd-kv-value">{captureModeLabel}</span>
-              </div>
-              <div className="sd-kv">
-                <span className="sd-kv-label">Đếm ngược</span>
-                <span className="sd-kv-value">{settings.countdownSec}s</span>
-              </div>
-              <div className="sd-kv">
-                <span className="sd-kv-label">Camera</span>
-                <span className="sd-kv-value">{currentSourceLabel}</span>
-              </div>
-              <div className="sd-kv">
-                <span className="sd-kv-label">Runtime</span>
-                <span className="sd-kv-value">
-                  <span
-                    className="sd-status-dot"
-                    data-tone={runtime.tone}
-                  />
-                  {runtimeModeLabel}
-                </span>
-              </div>
-              <div className="sd-kv">
-                <span className="sd-kv-label">Hướng</span>
-                <span className="sd-kv-value">{orientationLabel} · {settings.rotationQuarter * 90}°</span>
-              </div>
-              <div className="sd-kv">
-                <span className="sd-kv-label">Cơ chế lưu</span>
-                <span className="sd-kv-value">
-                  <span
-                    className="sd-status-dot"
-                    data-tone={runtime.tone}
-                  />
-                  {autoSaveSummary}
-                </span>
-              </div>
-              <div className="sd-kv">
-                <span className="sd-kv-label">Flip</span>
-                <span className="sd-kv-value">
-                  H: {settings.flipHorizontal ? 'Bật' : 'Tắt'} · V: {settings.flipVertical ? 'Bật' : 'Tắt'}
-                </span>
-              </div>
-              <div className="sd-kv">
-                <span className="sd-kv-label">Lưu trữ</span>
-                <span className="sd-kv-value">{currentOutputLabel}</span>
-              </div>
-            </div>
-
-            <div className="sd-status-strip">
-              <div className="sd-status-item">
-                <span className="sd-status-dot" data-tone={permissionSummary.tone} />
-                <span className="sd-status-text">Quyền: {permissionSummary.label}</span>
-              </div>
-              <div className="sd-status-item">
-                <span className="sd-status-dot" data-tone={streamSummary.tone} />
-                <span className="sd-status-text">Stream: {streamSummary.label}</span>
-              </div>
-              <div className="sd-status-item">
-                <span className="sd-status-dot" data-tone={isBusy ? 'warn' : 'good'} />
-                <span className="sd-status-text">{isBusy ? 'Đang xử lý' : 'Sẵn sàng'}</span>
-              </div>
-            </div>
-
-            {lastError ? (
-              <div className="sd-error-banner">
-                <p>{lastError}</p>
-              </div>
-            ) : null}
-          </div>
+          <SettingsDashboardOverviewPanel
+            settings={settings}
+            captureModeLabel={captureModeLabel}
+            currentSourceLabel={currentSourceLabel}
+            runtime={runtime}
+            permissionSummary={permissionSummary}
+            streamSummary={streamSummary}
+            orientationLabel={orientationLabel}
+            isBusy={isBusy}
+            lastError={lastError}
+          />
         )
 
       case 'capture':
         return (
-          <div className="sd-panel">
-            <header className="sd-panel-header">
-              <h2>Chế độ chụp</h2>
-              <p className="sd-panel-sub">Chọn chế độ và thời gian đếm ngược</p>
-            </header>
-
-            <div className="sd-field">
-              <label className="sd-field-label">Chế độ</label>
-              <div className="sd-segmented">
-                <button
-                  className={`sd-seg-btn ${settings.captureMode === 'photo' ? 'active' : ''}`}
-                  type="button"
-                  onClick={() => onModeChange('photo')}
-                  disabled={isBusy}
-                >
-                  <Camera size={16} />
-                  Photo
-                </button>
-                <button
-                  className={`sd-seg-btn ${settings.captureMode === 'boomerang' ? 'active' : ''}`}
-                  type="button"
-                  onClick={() => onModeChange('boomerang')}
-                  disabled={isBusy}
-                >
-                  <Video size={16} />
-                  Boomerang
-                </button>
-              </div>
-            </div>
-
-            <div className="sd-field">
-              <label className="sd-field-label">Đếm ngược</label>
-              <div className="sd-chip-row">
-                {COUNTDOWN_OPTIONS.map((opt) => (
-                  <button
-                    key={opt}
-                    className={`sd-chip ${settings.countdownSec === opt ? 'active' : ''}`}
-                    type="button"
-                    onClick={() => onCountdownChange(opt)}
-                    disabled={isBusy}
-                  >
-                    <Clock3 size={14} />
-                    {opt}s
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="sd-field-hint">
-              Chế độ <strong>{captureModeLabel}</strong> với đếm ngược <strong>{settings.countdownSec}s</strong> đang được sử dụng.
-            </div>
-          </div>
+          <SettingsDashboardCapturePanel
+            settings={settings}
+            captureModeLabel={captureModeLabel}
+            isBusy={isBusy}
+            onModeChange={onModeChange}
+            onCountdownChange={onCountdownChange}
+          />
         )
 
       case 'camera':
         return (
-          <div className="sd-panel">
-            <header className="sd-panel-header">
-              <h2>Camera</h2>
-              <p className="sd-panel-sub">Chọn nguồn camera và quản lý quyền</p>
-            </header>
-
-            <div className="sd-field">
-              <label className="sd-field-label">Nguồn camera</label>
-              <select
-                className="sd-input"
-                value={settings.deviceId ?? ''}
-                onChange={(e) => onDeviceChange(e.target.value)}
-                disabled={permissionState !== 'granted' || isBusy || sources.length === 0}
-              >
-                <option value="">Chọn nguồn camera</option>
-                {sources.map((s) => (
-                  <option key={s.deviceId} value={s.deviceId}>
-                    {s.isSonyPreferred ? '★ ' : ''}{s.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="sd-btn-row">
-              {permissionState !== 'granted' ? (
-                <button className="sd-action-btn" type="button" onClick={onRetryPermission}>
-                  <Settings2 size={16} />
-                  Xin quyền camera
-                </button>
-              ) : null}
-              <button className="sd-action-btn" type="button" onClick={onRefreshSources}>
-                <RefreshCw size={16} />
-                Làm mới
-              </button>
-            </div>
-
-            <div className="sd-kv-grid sd-kv-grid--compact">
-              <div className="sd-kv">
-                <span className="sd-kv-label">Quyền</span>
-                <span className="sd-kv-value">
-                  <span className="sd-status-dot" data-tone={permissionSummary.tone} />
-                  {permissionSummary.label}
-                </span>
-              </div>
-              <div className="sd-kv">
-                <span className="sd-kv-label">Stream</span>
-                <span className="sd-kv-value">
-                  <span className="sd-status-dot" data-tone={streamSummary.tone} />
-                  {streamSummary.label}
-                </span>
-              </div>
-              <div className="sd-kv">
-                <span className="sd-kv-label">Số nguồn</span>
-                <span className="sd-kv-value">{sources.length}</span>
-              </div>
-              <div className="sd-kv">
-                <span className="sd-kv-label">Đang dùng</span>
-                <span className="sd-kv-value">{currentSourceLabel}</span>
-              </div>
-            </div>
-          </div>
+          <SettingsDashboardCameraPanel
+            settings={settings}
+            sources={sources}
+            permissionState={permissionState}
+            isBusy={isBusy}
+            permissionSummary={permissionSummary}
+            streamSummary={streamSummary}
+            currentSourceLabel={currentSourceLabel}
+            onDeviceChange={onDeviceChange}
+            onRetryPermission={onRetryPermission}
+            onRefreshSources={onRefreshSources}
+          />
         )
 
       case 'output':
         return (
-          <div className="sd-panel">
-            <header className="sd-panel-header">
-              <h2>Thư mục lưu</h2>
-              <p className="sd-panel-sub">Cấu hình đường dẫn lưu ảnh và video</p>
-            </header>
-
-            <div className="sd-field">
-              <label className="sd-field-label">Đường dẫn</label>
-              <div className="sd-input-group">
-                <input
-                  className="sd-input"
-                  type="text"
-                  value={outputDirValue}
-                  placeholder={
-                    desktopSaveEnabled
-                      ? 'Chọn thư mục bằng nút bên phải'
-                      : runtime.outputTargetLabel
-                  }
-                  spellCheck={false}
-                  autoComplete="off"
-                  readOnly
-                  disabled={isBusy || !desktopSaveEnabled}
-                />
-                <button
-                  className="sd-input-addon"
-                  type="button"
-                  onClick={() => { void handlePickOutputDir() }}
-                  title="Chọn thư mục"
-                  disabled={isBusy || !desktopSaveEnabled}
-                >
-                  <FolderOpen size={16} />
-                </button>
-              </div>
-            </div>
-
-            {!desktopSaveEnabled ? (
-              <div className="sd-field-hint">
-                Browser mode dùng thư mục download mặc định của trình duyệt. Vị trí thực tế có thể thay đổi theo cài đặt browser trên từng máy.
-              </div>
-            ) : null}
-
-            {desktopSaveEnabled ? (
-              <div className="sd-field-hint warn">
-                Bản desktop chỉ cho chọn thư mục qua hộp thoại hệ thống để Tauri
-                giữ quyền ghi file ổn định sau khi app khởi động lại. Không nhập
-                tay đường dẫn.
-              </div>
-            ) : (
-              <div className="sd-kv-grid sd-kv-grid--compact">
-                <div className="sd-kv sd-kv--full">
-                  <span className="sd-kv-label">Thư mục hiện tại</span>
-                  <span className="sd-kv-value sd-kv-value--mono">{runtime.outputTargetLabel}</span>
-                </div>
-              </div>
-            )}
-
-            {desktopSaveEnabled ? (
-              settings.outputDir ? (
-                <div className="sd-kv-grid sd-kv-grid--compact">
-                  <div className="sd-kv sd-kv--full">
-                    <span className="sd-kv-label">Thư mục hiện tại</span>
-                    <span className="sd-kv-value sd-kv-value--mono">{settings.outputDir}</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="sd-field-hint">
-                  Desktop mode cần một thư mục local để ghi file sau mỗi lần chụp.
-                </div>
-              )
-            ) : null}
-          </div>
+          <SettingsDashboardOutputPanel
+            settings={settings}
+            runtime={runtime}
+            isBusy={isBusy}
+            onPickOutputDir={onPickOutputDir}
+          />
         )
 
       case 'transform':
         return (
-          <div className="sd-panel">
-            <header className="sd-panel-header">
-              <h2>Xoay / Lật</h2>
-              <p className="sd-panel-sub">Điều chỉnh hướng và phản chiếu preview</p>
-            </header>
-
-            <div className="sd-field">
-              <label className="sd-field-label">Xoay</label>
-              <button
-                className="sd-transform-btn"
-                type="button"
-                onClick={onRotate}
-                disabled={isBusy}
-              >
-                <RotateCw size={16} />
-                {settings.rotationQuarter * 90}°
-              </button>
-            </div>
-
-            <div className="sd-field">
-              <label className="sd-field-label">Lật hình</label>
-              <div className="sd-btn-row">
-                <button
-                  className={`sd-transform-btn ${settings.flipHorizontal ? 'active' : ''}`}
-                  type="button"
-                  onClick={onFlipHorizontal}
-                  disabled={isBusy}
-                >
-                  <FlipHorizontal2 size={16} />
-                  Ngang
-                </button>
-                <button
-                  className={`sd-transform-btn ${settings.flipVertical ? 'active' : ''}`}
-                  type="button"
-                  onClick={onFlipVertical}
-                  disabled={isBusy}
-                >
-                  <FlipVertical2 size={16} />
-                  Dọc
-                </button>
-              </div>
-            </div>
-
-            <div className="sd-kv-grid sd-kv-grid--compact">
-              <div className="sd-kv">
-                <span className="sd-kv-label">Hướng</span>
-                <span className="sd-kv-value">{orientationLabel}</span>
-              </div>
-              <div className="sd-kv">
-                <span className="sd-kv-label">Góc xoay</span>
-                <span className="sd-kv-value">{settings.rotationQuarter * 90}°</span>
-              </div>
-              <div className="sd-kv">
-                <span className="sd-kv-label">Flip ngang</span>
-                <span className="sd-kv-value">
-                  <span className="sd-status-dot" data-tone={settings.flipHorizontal ? 'good' : 'neutral'} />
-                  {settings.flipHorizontal ? 'Bật' : 'Tắt'}
-                </span>
-              </div>
-              <div className="sd-kv">
-                <span className="sd-kv-label">Flip dọc</span>
-                <span className="sd-kv-value">
-                  <span className="sd-status-dot" data-tone={settings.flipVertical ? 'good' : 'neutral'} />
-                  {settings.flipVertical ? 'Bật' : 'Tắt'}
-                </span>
-              </div>
-            </div>
-          </div>
+          <SettingsDashboardTransformPanel
+            settings={settings}
+            orientationLabel={orientationLabel}
+            isBusy={isBusy}
+            onRotate={onRotate}
+            onFlipHorizontal={onFlipHorizontal}
+            onFlipVertical={onFlipVertical}
+          />
         )
 
       case 'download':
         return (
-          <div className="sd-panel sd-download-panel">
-            <header className="sd-panel-header">
-              <h2>Tải ứng dụng</h2>
-              <p className="sd-panel-sub">Desktop distribution và script cài đặt</p>
-            </header>
-
-            <div className="sd-download-tabs">
-              <button
-                className={`sd-download-tab ${downloadTab === 'end-user' ? 'active' : ''}`}
-                type="button"
-                onClick={() => setDownloadTab('end-user')}
-              >
-                Phân phối end-user
-              </button>
-              <button
-                className={`sd-download-tab ${downloadTab === 'scripts' ? 'active' : ''}`}
-                type="button"
-                onClick={() => setDownloadTab('scripts')}
-              >
-                Nội bộ / nâng cao
-              </button>
-            </div>
-
-            {downloadTab === 'end-user' ? (
-              <section className="sd-install-section" aria-label="Desktop downloads">
-                <div className="sd-install-section-head">
-                  <div>
-                    <p className="sd-install-kicker">Phân phối end-user</p>
-                    <h3>Tải desktop app</h3>
-                    <p className="sd-install-section-copy">
-                      Ưu tiên direct download cho người dùng cuối. Route public
-                      `/#/download` dùng cùng release catalog để luôn hiển thị
-                      đúng installer trên GitHub Releases.
-                    </p>
-                  </div>
-
-                  <div className="sd-install-section-actions">
-                    <Link className="sd-release-link" to={DOWNLOAD_ROUTE}>
-                      Mở trang tải app
-                    </Link>
-                  </div>
-                </div>
-
-                {renderReleaseStatusBanner()}
-
-                <div className="sd-install-grid">
-                  {(releaseCatalog?.groups ?? []).map((group) => {
-                    const isCurrent = group.family === currentPlatform
-
-                    return (
-                      <div key={group.id} className={`sd-install-card ${isCurrent ? 'highlighted' : ''}`}>
-                        <div className="sd-install-card-head">
-                          <div className="sd-install-card-title">
-                            <span className="sd-install-os-icon" aria-hidden="true">
-                              <PlatformIcon platform={group.id} />
-                            </span>
-                            <div>
-                              <h4>{group.platformLabel}</h4>
-                              {isCurrent ? <span className="sd-install-current-badge">Thiết bị hiện tại</span> : null}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="sd-install-variants">
-                          {group.variants.map((variant) =>
-                            variant.status === 'ready' && variant.browserDownloadUrl ? (
-                              <a
-                                key={variant.id}
-                                href={variant.browserDownloadUrl}
-                                className="sd-install-variant-link ready"
-                                target="_blank"
-                                rel="noreferrer"
-                              >
-                                <span>{variant.label}</span>
-                                <Download size={16} />
-                              </a>
-                            ) : (
-                              <span key={variant.id} className="sd-install-variant-link missing">
-                                <span>{variant.label}</span>
-                                <span className="sd-variant-status-text">Chưa sẵn sàng</span>
-                              </span>
-                            )
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </section>
-            ) : (
-              <section className="sd-install-section" aria-label="Install scripts">
-                <div className="sd-install-section-head">
-                  <div>
-                    <p className="sd-install-kicker">Nội bộ / nâng cao</p>
-                    <h3>Script cài đặt từ GitHub Releases</h3>
-                    <p className="sd-install-section-copy">
-                      Giữ lại cho vận hành nội bộ hoặc các tình huống cần script
-                      cài đặt có sẵn quyền quản trị.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="sd-install-grid">
-                  {INSTALL_SCRIPT_SNIPPETS.map((installScript) => {
-                    const isCopied = copiedScriptId === installScript.id
-
-                    return (
-                      <button
-                        key={installScript.id}
-                        className={`sd-install-card sd-install-card-btn ${isCopied ? 'copied' : ''}`}
-                        type="button"
-                        onClick={() => {
-                          void handleCopyInstallScript(
-                            installScript.id,
-                            installScript.script,
-                          )
-                        }}
-                        aria-label={`Sao chép script cài đặt cho ${installScript.platform}`}
-                      >
-                        <div className="sd-install-card-head">
-                          <div className="sd-install-card-title">
-                            <span className="sd-install-os-icon" aria-hidden="true">
-                              <PlatformIcon
-                                platform={platformForInstallScript(installScript.platform)}
-                              />
-                            </span>
-                            <h4>{installScript.platform}</h4>
-                            <p>{installScript.summary}</p>
-                          </div>
-                          <span className="sd-install-card-icon" aria-hidden="true">
-                            {isCopied ? <Check size={20} /> : <CodeXml size={20} />}
-                          </span>
-                        </div>
-                        <span className="sd-install-card-hint">
-                          {isCopied ? 'Đã sao chép vào clipboard' : 'Nhấn để sao chép script'}
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </section>
-            )}
-          </div>
+          <SettingsDashboardDownloadPanel
+            downloadTab={downloadTab}
+            copiedScriptId={copiedScriptId}
+            releaseCatalog={releaseCatalog}
+            releaseStatus={releaseStatus}
+            currentPlatform={currentPlatform}
+            onToggleDownloadTab={() =>
+              setDownloadTab((current) =>
+                current === 'end-user' ? 'scripts' : 'end-user',
+              )
+            }
+            onCopyInstallScript={(scriptId, script) => {
+              void handleCopyInstallScript(scriptId, script)
+            }}
+          />
         )
     }
   }
@@ -670,23 +228,10 @@ export function SettingsDashboard({
           />
         </div>
 
-        <nav className="sd-rail-nav" aria-label="Settings">
-          {SECTION_LINKS.map((section) => {
-            const Icon = section.icon
-            return (
-              <button
-                key={section.id}
-                className={`sd-rail-item ${activeSection === section.id ? 'active' : ''}`}
-                type="button"
-                onClick={() => setActiveSection(section.id)}
-                title={section.label}
-              >
-                <Icon size={20} />
-                <span>{section.label}</span>
-              </button>
-            )
-          })}
-        </nav>
+        <SettingsDashboardNav
+          activeSection={activeSection}
+          onSelectSection={setActiveSection}
+        />
       </aside>
 
       {/* ── Controls panel ── */}
@@ -695,44 +240,22 @@ export function SettingsDashboard({
       </main>
 
       {/* ── Always-visible preview ── */}
-      <aside className="sd-preview">
-        <div className="sd-preview-label">Live Preview</div>
-        <div className="sd-preview-stage">
-          <div className={`sd-preview-square ${isPortrait ? 'is-portrait' : 'is-landscape'}`}>
-            <CapturePreview
-              previewAspect={previewAspect}
-              previewFrameRef={previewFrameRef}
-              previewCanvasRef={previewCanvasRef}
-              permissionState={permissionState}
-              streamState={streamState}
-              sourceUnavailable={streamState === 'missing-device' || sources.length === 0}
-              lastError={lastError}
-              countdownValue={null}
-              onRetryPermission={onRetryPermission}
-              onRefreshSources={onRefreshSources}
-            />
-          </div>
-        </div>
-        <div className="sd-preview-meta">
-          <div className="sd-preview-meta-row">
-            <span>Stream</span>
-            <span className="sd-status-dot" data-tone={streamSummary.tone} />
-            <span>{streamSummary.label}</span>
-          </div>
-          <div className="sd-preview-meta-row">
-            <span>Nguồn</span>
-            <span className="sd-preview-meta-val">{currentSourceLabel}</span>
-          </div>
-          <div className="sd-preview-meta-row">
-            <span>Transform</span>
-            <span className="sd-preview-meta-val">{settings.rotationQuarter * 90}° · H{settings.flipHorizontal ? '1' : '0'} V{settings.flipVertical ? '1' : '0'}</span>
-          </div>
-          <div className="sd-preview-meta-row">
-            <span>Mode</span>
-            <span className="sd-preview-meta-val">{captureModeLabel} · {settings.countdownSec}s</span>
-          </div>
-        </div>
-      </aside>
+      <SettingsDashboardPreview
+        settings={settings}
+        sources={sources}
+        permissionState={permissionState}
+        streamState={streamState}
+        lastError={lastError}
+        previewFrameRef={previewFrameRef}
+        previewCanvasRef={previewCanvasRef}
+        previewAspect={previewAspect}
+        isPortrait={isPortrait}
+        currentSourceLabel={currentSourceLabel}
+        streamSummary={streamSummary}
+        captureModeLabel={captureModeLabel}
+        onRetryPermission={onRetryPermission}
+        onRefreshSources={onRefreshSources}
+      />
 
       {/* ── Floating Back Button ── */}
       <Link className="sd-floating-back" to={CAPTURE_ROUTE} title="Quay lại chụp">
@@ -740,53 +263,4 @@ export function SettingsDashboard({
       </Link>
     </section>
   )
-}
-
-/* ── Helpers ── */
-
-function getPermissionSummary(p: PermissionState) {
-  switch (p) {
-    case 'granted':  return { label: 'Đã cấp',      tone: 'good'    as const }
-    case 'denied':   return { label: 'Bị từ chối',   tone: 'warn'    as const }
-    default:         return { label: 'Chờ',           tone: 'neutral' as const }
-  }
-}
-
-function getStreamSummary(s: StreamState) {
-  switch (s) {
-    case 'live':           return { label: 'Đang phát',    tone: 'good'    as const }
-    case 'starting':       return { label: 'Khởi động',    tone: 'neutral' as const }
-    case 'missing-device': return { label: 'Mất thiết bị', tone: 'warn'    as const }
-    case 'error':          return { label: 'Lỗi',          tone: 'warn'    as const }
-    default:               return { label: 'Chờ',          tone: 'neutral' as const }
-  }
-}
-
-async function copyTextToClipboard(text: string): Promise<void> {
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text)
-    return
-  }
-
-  const textarea = document.createElement('textarea')
-
-  textarea.value = text
-  textarea.setAttribute('readonly', 'true')
-  textarea.style.position = 'fixed'
-  textarea.style.opacity = '0'
-  document.body.appendChild(textarea)
-  textarea.select()
-  document.execCommand('copy')
-  textarea.remove()
-}
-
-function platformForInstallScript(platform: string): 'macos' | 'windows' | 'linux' {
-  switch (platform) {
-    case 'macOS':
-      return 'macos'
-    case 'Windows 11':
-      return 'windows'
-    default:
-      return 'linux'
-  }
 }
