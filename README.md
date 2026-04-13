@@ -55,7 +55,13 @@ Setup and deploy guide:
 
 - Checklist: [docs/vercel-r2-cloud-share-checklist.md](./docs/vercel-r2-cloud-share-checklist.md)
 - Local quickstart: [docs/vercel-dev-cloud-share-quickstart.md](./docs/vercel-dev-cloud-share-quickstart.md)
+- Go-live checklist: [docs/internal-event-ops-go-live-checklist.md](./docs/internal-event-ops-go-live-checklist.md)
+- Operator runbook: [docs/cloud-share-operator-runbook.md](./docs/cloud-share-operator-runbook.md)
 - Env template: [.env.example](./.env.example)
+
+Operational endpoint:
+
+- Health check: `/api/health/cloud-share`
 
 ## GitHub Releases
 

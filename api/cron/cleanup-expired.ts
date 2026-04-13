@@ -1,6 +1,12 @@
 import { listExpiredCaptures, markCaptureDeleted } from '../_lib/db.js'
 import { getAppEnv } from '../_lib/env.js'
-import { handleApiError, unauthorized } from '../_lib/http.js'
+import {
+  createRequestContext,
+  handleApiError,
+  jsonResponse,
+  serviceUnavailable,
+  unauthorized,
+} from '../_lib/http.js'
 import { deleteObjectIfExists } from '../_lib/r2.js'
 
 export const runtime = 'nodejs'
@@ -9,6 +15,8 @@ const CLEANUP_BATCH_SIZE = 200
 const MAX_BATCH_PASSES = 10
 
 export async function GET(request: Request): Promise<Response> {
+  const requestContext = createRequestContext(request)
+
   try {
     authorizeCronRequest(request)
 
@@ -37,14 +45,21 @@ export async function GET(request: Request): Promise<Response> {
       }
     }
 
-    return Response.json({
-      processed,
-      deleted,
-      failed: failedCaptureIds.length,
-      failedCaptureIds: failedCaptureIds.slice(0, 20),
-    })
+    return jsonResponse(
+      {
+        processed,
+        deleted,
+        failed: failedCaptureIds.length,
+        failedCaptureIds: failedCaptureIds.slice(0, 20),
+      },
+      requestContext.requestId,
+    )
   } catch (error) {
-    return handleApiError(error, 'Không thể dọn capture hết hạn.')
+    return handleApiError(
+      error,
+      'Không thể dọn capture hết hạn.',
+      requestContext,
+    )
   }
 }
 
@@ -52,10 +67,16 @@ function authorizeCronRequest(request: Request): void {
   const cronSecret = getAppEnv().cronSecret
 
   if (!cronSecret) {
-    return
+    serviceUnavailable(
+      'Cleanup cron chưa được cấu hình `CRON_SECRET`.',
+      'cron_secret_missing',
+    )
   }
 
   if (request.headers.get('authorization') !== `Bearer ${cronSecret}`) {
-    unauthorized('Unauthorized cron request.')
+    unauthorized(
+      'Authorization cho cleanup cron không hợp lệ.',
+      'invalid_cron_secret',
+    )
   }
 }

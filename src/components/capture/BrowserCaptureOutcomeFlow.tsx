@@ -22,7 +22,7 @@ export function BrowserCaptureOutcomeFlow({
   const previewMaxWidth =
     outcome.width > 0 && outcome.height > outcome.width
       ? 'min(100%, 560px)'
-      : 'min(100%, 860px)'
+      : 'min(100%, 940px)'
 
   return (
     <div className="browser-capture-outcome-backdrop">
@@ -35,7 +35,6 @@ export function BrowserCaptureOutcomeFlow({
         aria-describedby="browser-capture-outcome-description"
       >
         <div className="browser-capture-outcome-copy">
-          <span className="browser-capture-outcome-kicker">Xem nhanh outcome</span>
           <h2
             id="browser-capture-outcome-title"
             className="browser-capture-outcome-title"
@@ -53,29 +52,31 @@ export function BrowserCaptureOutcomeFlow({
 
         <div className="browser-capture-outcome-stage">
           <div className="browser-capture-outcome-preview-panel">
-            <div
-              className="browser-capture-outcome-preview-frame"
-              style={{
-                aspectRatio: previewAspectRatio,
-                width: previewMaxWidth,
-              }}
-            >
-              {isPhoto ? (
-                <img
-                  src={outcome.previewUrl}
-                  alt="Ảnh vừa chụp"
-                  className="browser-capture-outcome-image"
-                />
-              ) : (
-                <video
-                  src={outcome.previewUrl}
-                  className="browser-capture-outcome-video"
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                />
-              )}
+            <div className="browser-capture-outcome-preview-shell">
+              <div
+                className="browser-capture-outcome-preview-frame"
+                style={{
+                  aspectRatio: previewAspectRatio,
+                  width: previewMaxWidth,
+                }}
+              >
+                {isPhoto ? (
+                  <img
+                    src={outcome.previewUrl}
+                    alt="Ảnh vừa chụp"
+                    className="browser-capture-outcome-image"
+                  />
+                ) : (
+                  <video
+                    src={outcome.previewUrl}
+                    className="browser-capture-outcome-video"
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                  />
+                )}
+              </div>
             </div>
           </div>
 

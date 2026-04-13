@@ -24,16 +24,10 @@ export const BROWSER_CLOUD_STORAGE_REVIEW_LABEL =
   `${BROWSER_CLOUD_STORAGE_LABEL} · chờ xác nhận upload`
 
 const MAX_CONCURRENT_UPLOADS = 2
-const QR_QUEUE_ACCENT_PALETTE = [
-  '#5EEAD4',
-  '#F97316',
-  '#38BDF8',
-  '#A3E635',
-  '#FACC15',
-  '#FB7185',
-  '#22C55E',
-  '#F59E0B',
-] as const
+const QR_QUEUE_HUE_STEP = 37
+const QR_QUEUE_COMPLEMENTARY_SHIFT = 180
+const QR_QUEUE_ACCENT_SATURATION = 88
+const QR_QUEUE_ACCENT_LIGHTNESS = 64
 
 export interface PendingCloudShareUpload extends RenderedCapture {
   kind: CaptureMode
@@ -81,9 +75,15 @@ function toPendingUpload(
   }
 }
 
+function toHslAccentColor(hue: number): string {
+  return `hsl(${Math.round(hue)} ${QR_QUEUE_ACCENT_SATURATION}% ${QR_QUEUE_ACCENT_LIGHTNESS}%)`
+}
+
 export function useCaptureCloudShare(): UseCaptureCloudShareResult {
   const [browserQrQueue, setBrowserQrQueue] = useState<BrowserQrQueueItem[]>([])
   const browserQrQueueRef = useRef<BrowserQrQueueItem[]>([])
+  const accentSequenceSeedRef = useRef(Math.floor(Math.random() * 360))
+  const accentSequenceIndexRef = useRef(0)
   const stagedBrowserShareRef = useRef<PendingCloudShareUpload | null>(null)
   const queuedJobIdsRef = useRef<string[]>([])
   const activeJobsRef = useRef(new Map<string, AbortController>())
@@ -156,6 +156,20 @@ export function useCaptureCloudShare(): UseCaptureCloudShareResult {
 
   function getBrowserQrQueueItem(id: string): BrowserQrQueueItem | null {
     return browserQrQueueRef.current.find((item) => item.id === id) ?? null
+  }
+
+  function getNextBrowserQrQueueAccentColor(): string {
+    const sequenceIndex = accentSequenceIndexRef.current
+    const pairIndex = Math.floor(sequenceIndex / 2)
+    const isComplementaryStep = sequenceIndex % 2 === 1
+    const hue =
+      accentSequenceSeedRef.current +
+      pairIndex * QR_QUEUE_HUE_STEP +
+      (isComplementaryStep ? QR_QUEUE_COMPLEMENTARY_SHIFT : 0)
+
+    accentSequenceIndexRef.current += 1
+
+    return toHslAccentColor(((hue % 360) + 360) % 360)
   }
 
   async function loadPayloadForItem(
@@ -387,10 +401,7 @@ export function useCaptureCloudShare(): UseCaptureCloudShareResult {
       id: crypto.randomUUID(),
       kind: payload.kind,
       createdAt: Date.now(),
-      accentColor:
-        QR_QUEUE_ACCENT_PALETTE[
-          Math.floor(Math.random() * QR_QUEUE_ACCENT_PALETTE.length)
-        ],
+      accentColor: getNextBrowserQrQueueAccentColor(),
       status: 'generating',
     }
 
@@ -446,6 +457,7 @@ export function useCaptureCloudShare(): UseCaptureCloudShareResult {
           MAX_BROWSER_QR_QUEUE_ITEMS,
         )
 
+        accentSequenceIndexRef.current = nextItems.length
         browserQrQueueRef.current = nextItems
         setBrowserQrQueue(nextItems)
 

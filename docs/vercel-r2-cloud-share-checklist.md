@@ -17,6 +17,8 @@ Flow code hiện tại nằm ở:
 - Vercel routing + cron: [vercel.json](../vercel.json)
 - Env template: [.env.example](../.env.example)
 - Quickstart local test: [docs/vercel-dev-cloud-share-quickstart.md](./vercel-dev-cloud-share-quickstart.md)
+- Internal go-live: [docs/internal-event-ops-go-live-checklist.md](./internal-event-ops-go-live-checklist.md)
+- Operator runbook: [docs/cloud-share-operator-runbook.md](./cloud-share-operator-runbook.md)
 
 ## Quick Go / No-Go
 
@@ -27,6 +29,7 @@ Flow code hiện tại nằm ở:
 - [ ] Có Postgres connection string
 - [ ] Đã set `APP_BASE_URL` đúng domain public
 - [ ] Đã set `CRON_SECRET`
+- [ ] `GET /api/health/cloud-share` trả `200`
 - [ ] Đã test capture thật trên `vercel dev` hoặc deployment thật
 
 ## 1. Tạo Vercel Project Đúng Cấu Trúc
@@ -136,6 +139,7 @@ Dùng file mẫu [.env.example](../.env.example).
 
 - `APP_BASE_URL`
   - domain public thật, ví dụ `https://cheesebooth.vercel.app`
+  - khi test local bằng `vercel dev`, đổi sang origin local thật, ví dụ `http://localhost:3000`
   - không thêm dấu `/` cuối
 - `POSTGRES_URL`
   - connection string của DB
@@ -209,6 +213,7 @@ Checklist sau deploy:
 - [ ] Link token có dạng `https://your-domain/{download_token}`
 - [ ] Token mở được file thật
 - [ ] Bucket vẫn private
+- [ ] `https://your-domain/api/health/cloud-share` trả `200`
 
 ## 7. Force Test Hết Hạn + Cleanup
 

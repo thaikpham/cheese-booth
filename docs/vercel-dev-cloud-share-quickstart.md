@@ -63,6 +63,7 @@ rg "^(APP_BASE_URL|POSTGRES_URL|R2_ACCOUNT_ID|R2_BUCKET_NAME|R2_ACCESS_KEY_ID|CR
 ```
 
 Nếu bạn muốn giữ API cùng origin local qua `vercel dev`, để `VITE_CLOUD_SHARE_API_BASE` trống hoặc xóa dòng đó khỏi `.env.local`.
+Đồng thời đặt `APP_BASE_URL=http://localhost:3000` hoặc đúng origin local mà `vercel dev` đang dùng, vì API cloud-share hiện kiểm tra `Origin` theo `APP_BASE_URL`.
 
 ## 3. Chạy App Bằng Vercel Dev
 
@@ -93,6 +94,7 @@ Kỳ vọng:
 - preview local xuất hiện ngay, không chờ upload
 - block `Share / QR` hiện trạng thái `Đang tạo link tải…`
 - vài giây sau QR xuất hiện
+- `http://localhost:3000/api/health/cloud-share` trả `200`
 
 ## 5. Kiểm Tra Token Link
 

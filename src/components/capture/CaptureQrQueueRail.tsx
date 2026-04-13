@@ -29,10 +29,11 @@ export function CaptureQrQueueRail({
             </p>
           </div>
         ) : (
-          items.map((item) => (
+          items.map((item, index) => (
             <CaptureQrQueueCard
               key={item.id}
               item={item}
+              sequenceLabel={formatQrQueueSequenceLabel(item.kind, index + 1)}
               onRetryItem={onRetryItem}
             />
           ))
@@ -44,11 +45,13 @@ export function CaptureQrQueueRail({
 
 interface CaptureQrQueueCardProps {
   item: BrowserQrQueueItem
+  sequenceLabel: string
   onRetryItem: (id: string) => void
 }
 
 function CaptureQrQueueCard({
   item,
+  sequenceLabel,
   onRetryItem,
 }: CaptureQrQueueCardProps) {
   const qrCodeUrl = useQrCodeDataUrl(item.downloadUrl)
@@ -91,7 +94,7 @@ function CaptureQrQueueCard({
       </div>
 
       <div className="capture-qr-queue-card-copy">
-        <p className="capture-qr-queue-card-kind">{mediaLabel}</p>
+        <p className="capture-qr-queue-card-kind">{sequenceLabel}</p>
 
         {item.status === 'generating' ? (
           <p className="capture-qr-queue-card-description">
@@ -120,6 +123,15 @@ function CaptureQrQueueCard({
       </div>
     </article>
   )
+}
+
+function formatQrQueueSequenceLabel(
+  kind: BrowserQrQueueItem['kind'],
+  sequenceNumber: number,
+): string {
+  const mediaLabel = kind === 'photo' ? 'PHOTO' : 'BOOMERANG'
+
+  return `${mediaLabel}-${String(sequenceNumber).padStart(3, '0')}`
 }
 
 function useQrCodeDataUrl(downloadUrl?: string): string | null {

@@ -82,6 +82,11 @@ export async function ensureSchema(): Promise<void> {
   await globalForDatabase.__cheeseBoothSchemaReady
 }
 
+export async function pingDatabase(): Promise<void> {
+  await ensureSchema()
+  await sql`SELECT 1`
+}
+
 export async function createPendingCapture(
   input: CreatePendingCaptureInput,
 ): Promise<void> {
