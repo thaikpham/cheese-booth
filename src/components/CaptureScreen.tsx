@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import cheeseLogo from '../../cheese_icon_transparent.svg'
 
 import type {
-  BrowserQrQueueItem,
+  BrowserCaptureSessionState,
   BoomerangRecordingIndicator,
   CaptureOutcome,
   OperatorSettings,
@@ -13,11 +13,11 @@ import type {
 } from '../types'
 import { APP_NAME, APP_SUBTITLE } from '../lib/branding'
 import { getRuntimeEnvironment } from '../lib/runtime'
-import { BrowserCaptureOutcomeFlow } from './capture/BrowserCaptureOutcomeFlow'
+import { BrowserSessionFilmStripRail } from './capture/BrowserSessionFilmStripRail'
+import { BrowserSessionOverlay } from './capture/BrowserSessionOverlay'
 import { CaptureOutcomeModal } from './capture/CaptureOutcomeModal'
 import { CapturePreview } from './capture/CapturePreview'
 import { CapturePreviewTelemetry } from './capture/CapturePreviewTelemetry'
-import { CaptureQrQueueRail } from './capture/CaptureQrQueueRail'
 import { CaptureSideRail } from './capture/CaptureSideRail'
 
 const SETTINGS_ROUTE = '/settings'
@@ -32,12 +32,17 @@ interface CaptureScreenProps {
   countdownValue: number | null
   boomerangRecording: BoomerangRecordingIndicator | null
   captureOutcome: CaptureOutcome | null
-  browserQrQueue: BrowserQrQueueItem[]
+  browserSession: BrowserCaptureSessionState
   previewFrameRef: RefObject<HTMLDivElement | null>
   previewCanvasRef: RefObject<HTMLCanvasElement | null>
   onRetryPermission: () => void
   onRefreshSources: () => void
   onShutter: () => void
+  onStartBrowserSession: () => void
+  onFinalizeBrowserSession: () => void
+  onRetryBrowserSessionShare: () => void
+  onCancelBrowserSession: () => void
+  onResetBrowserSession: () => void
   onModeChange: (mode: OperatorSettings['captureMode']) => void
   onCountdownChange: (countdownSec: OperatorSettings['countdownSec']) => void
   onSetRotationQuarter: (
@@ -45,10 +50,9 @@ interface CaptureScreenProps {
   ) => void
   onFlipHorizontal: () => void
   onFlipVertical: () => void
-  onApproveCaptureOutcomeShare: () => void
+  onApproveCaptureOutcome: () => void
   onRejectCaptureOutcome: () => void
   onDismissCaptureOutcome: () => void
-  onRetryBrowserQrQueueItem: (id: string) => void
 }
 
 export function CaptureScreen({
@@ -61,21 +65,25 @@ export function CaptureScreen({
   countdownValue,
   boomerangRecording,
   captureOutcome,
-  browserQrQueue,
+  browserSession,
   previewFrameRef,
   previewCanvasRef,
   onRetryPermission,
   onRefreshSources,
   onShutter,
+  onStartBrowserSession,
+  onFinalizeBrowserSession,
+  onRetryBrowserSessionShare,
+  onCancelBrowserSession,
+  onResetBrowserSession,
   onModeChange,
   onCountdownChange,
   onSetRotationQuarter,
   onFlipHorizontal,
   onFlipVertical,
-  onApproveCaptureOutcomeShare,
+  onApproveCaptureOutcome,
   onRejectCaptureOutcome,
   onDismissCaptureOutcome,
-  onRetryBrowserQrQueueItem,
 }: CaptureScreenProps) {
   const navigate = useNavigate()
   const runtime = getRuntimeEnvironment(settings.outputDir)
@@ -85,11 +93,16 @@ export function CaptureScreen({
   const captureModeLabel =
     settings.captureMode === 'photo' ? 'Photo' : 'Boomerang'
   const sourceUnavailable = streamState === 'missing-device' || sources.length === 0
+  const browserShutterLocked =
+    runtime.kind === 'browser' &&
+    (browserSession.status !== 'active' ||
+      browserSession.items.length >= browserSession.maxItems)
   const shutterDisabled =
     isBusy ||
     !runtime.storageReady ||
     permissionState !== 'granted' ||
-    streamState !== 'live'
+    streamState !== 'live' ||
+    browserShutterLocked
 
   return (
     <section className="capture-screen">
@@ -100,10 +113,7 @@ export function CaptureScreen({
           }`}
         >
           {runtime.kind === 'browser' ? (
-            <CaptureQrQueueRail
-              items={browserQrQueue}
-              onRetryItem={onRetryBrowserQrQueueItem}
-            />
+            <BrowserSessionFilmStripRail session={browserSession} />
           ) : null}
 
           <div className="capture-preview-column">
@@ -132,7 +142,11 @@ export function CaptureScreen({
                 </div>
                 <CapturePreviewTelemetry
                   settings={settings}
-                  disabled={isBusy || countdownValue !== null}
+                  disabled={
+                    isBusy ||
+                    countdownValue !== null ||
+                    (runtime.kind === 'browser' && browserSession.status !== 'active')
+                  }
                   onModeChange={onModeChange}
                   onCountdownChange={onCountdownChange}
                   onSetRotationQuarter={onSetRotationQuarter}
@@ -159,18 +173,27 @@ export function CaptureScreen({
 
           <CaptureSideRail
             captureModeLabel={captureModeLabel}
+            runtimeKind={runtime.kind}
+            browserSession={runtime.kind === 'browser' ? browserSession : undefined}
             shutterDisabled={shutterDisabled}
             onOpenSettings={() => navigate(SETTINGS_ROUTE)}
             onShutter={onShutter}
+            onStartBrowserSession={onStartBrowserSession}
+            onFinalizeBrowserSession={onFinalizeBrowserSession}
+            onCancelBrowserSession={onCancelBrowserSession}
+            onResetBrowserSession={onResetBrowserSession}
           />
         </div>
       </div>
 
-      {captureOutcome && runtime.kind === 'browser' ? (
-        <BrowserCaptureOutcomeFlow
+      {runtime.kind === 'browser' ? (
+        <BrowserSessionOverlay
+          session={browserSession}
           outcome={captureOutcome}
-          onApproveShare={onApproveCaptureOutcomeShare}
+          onApproveOutcome={onApproveCaptureOutcome}
           onRejectOutcome={onRejectCaptureOutcome}
+          onRetrySessionShare={onRetryBrowserSessionShare}
+          onResetBrowserSession={onResetBrowserSession}
         />
       ) : null}
 

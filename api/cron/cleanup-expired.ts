@@ -1,4 +1,10 @@
-import { listExpiredCaptures, markCaptureDeleted } from '../_lib/db.js'
+import {
+  listCaptureSessionItems,
+  listExpiredCaptures,
+  listExpiredCaptureSessions,
+  markCaptureDeleted,
+  markCaptureSessionDeleted,
+} from '../_lib/db.js'
 import { getAppEnv } from '../_lib/env.js'
 import {
   createRequestContext,
@@ -22,12 +28,13 @@ export async function GET(request: Request): Promise<Response> {
 
     let processed = 0
     let deleted = 0
-    const failedCaptureIds: string[] = []
+    const failedIds: string[] = []
 
     for (let batchIndex = 0; batchIndex < MAX_BATCH_PASSES; batchIndex += 1) {
       const expiredCaptures = await listExpiredCaptures(CLEANUP_BATCH_SIZE)
+      const expiredSessions = await listExpiredCaptureSessions(CLEANUP_BATCH_SIZE)
 
-      if (expiredCaptures.length === 0) {
+      if (expiredCaptures.length === 0 && expiredSessions.length === 0) {
         break
       }
 
@@ -40,7 +47,32 @@ export async function GET(request: Request): Promise<Response> {
           deleted += 1
         } catch (error) {
           console.error('Không thể cleanup capture hết hạn.', capture.capture_id, error)
-          failedCaptureIds.push(capture.capture_id)
+          failedIds.push(capture.capture_id)
+        }
+      }
+
+      if (expiredSessions.length === 0) {
+        continue
+      }
+
+      processed += expiredSessions.length
+
+      for (const captureSession of expiredSessions) {
+        try {
+          const items = await listCaptureSessionItems(captureSession.session_id)
+
+          await Promise.all(
+            items.map((item) => deleteObjectIfExists(item.storage_key)),
+          )
+          await markCaptureSessionDeleted(captureSession.session_id)
+          deleted += 1
+        } catch (error) {
+          console.error(
+            'Không thể cleanup capture session hết hạn.',
+            captureSession.session_id,
+            error,
+          )
+          failedIds.push(captureSession.session_id)
         }
       }
     }
@@ -49,8 +81,8 @@ export async function GET(request: Request): Promise<Response> {
       {
         processed,
         deleted,
-        failed: failedCaptureIds.length,
-        failedCaptureIds: failedCaptureIds.slice(0, 20),
+        failed: failedIds.length,
+        failedCaptureIds: failedIds.slice(0, 20),
       },
       requestContext.requestId,
     )

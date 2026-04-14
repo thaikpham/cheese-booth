@@ -22,7 +22,7 @@ export interface SourceDescriptor {
   isSonyPreferred: boolean
 }
 
-export interface SessionState {
+export interface CameraSessionState {
   permissionState: PermissionState
   streamState: StreamState
   lastError: string | null
@@ -74,6 +74,45 @@ export interface CaptureOutcome {
   share: CaptureCloudShare
 }
 
+export type BrowserCaptureSessionStatus =
+  | 'idle'
+  | 'active'
+  | 'reviewing-shot'
+  | 'finalizing'
+  | 'ready'
+  | 'error'
+
+export interface BrowserSessionItem {
+  id: string
+  kind: CaptureMode
+  sequence: number
+  createdAt: number
+  previewUrl: string
+  posterUrl: string
+  mimeType: string
+  extension: string
+  width: number
+  height: number
+  blob: Blob
+}
+
+export interface BrowserSessionShareState {
+  status: 'idle' | 'finalizing' | 'ready' | 'error'
+  sessionId?: string
+  downloadToken?: string
+  galleryUrl?: string
+  expiresAt?: string
+  errorMessage?: string
+}
+
+export interface BrowserCaptureSessionState {
+  status: BrowserCaptureSessionStatus
+  startedAt: number | null
+  maxItems: number
+  items: BrowserSessionItem[]
+  share: BrowserSessionShareState
+}
+
 export const DEFAULT_OPERATOR_SETTINGS: OperatorSettings = {
   captureMode: 'photo',
   deviceId: null,
@@ -84,8 +123,18 @@ export const DEFAULT_OPERATOR_SETTINGS: OperatorSettings = {
   outputDir: null,
 }
 
-export const DEFAULT_SESSION_STATE: SessionState = {
+export const DEFAULT_CAMERA_SESSION_STATE: CameraSessionState = {
   permissionState: 'unknown',
   streamState: 'idle',
   lastError: null,
+}
+
+export const DEFAULT_BROWSER_CAPTURE_SESSION_STATE: BrowserCaptureSessionState = {
+  status: 'idle',
+  startedAt: null,
+  maxItems: 4,
+  items: [],
+  share: {
+    status: 'idle',
+  },
 }

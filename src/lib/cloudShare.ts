@@ -28,6 +28,52 @@ export interface CompleteCloudCaptureShareResponse {
   expiresAt: string
 }
 
+export interface InitCloudCaptureSessionItemInput {
+  kind: CaptureMode
+  mimeType: string
+  extension: string
+  byteSize: number
+  width: number
+  height: number
+  sequence: number
+}
+
+export interface InitCloudCaptureSessionResponse {
+  sessionId: string
+  expiresAt: string
+  items: Array<{
+    captureId: string
+    sequence: number
+    upload: CloudShareUploadDescriptor
+  }>
+}
+
+export interface CompleteCloudCaptureSessionResponse {
+  downloadToken: string
+  galleryUrl: string
+  expiresAt: string
+}
+
+export interface CloudCaptureSessionGalleryItem {
+  captureId: string
+  sequence: number
+  kind: CaptureMode
+  mimeType: string
+  extension: string
+  width: number
+  height: number
+  previewUrl: string
+  downloadUrl: string
+}
+
+export interface CloudCaptureSessionGalleryResponse {
+  sessionId: string
+  downloadToken: string
+  expiresAt: string
+  createdAt: string
+  items: CloudCaptureSessionGalleryItem[]
+}
+
 type CloudShareRequestStage = 'init' | 'upload' | 'complete'
 
 function getCloudShareApiBase(): string {
@@ -48,6 +94,10 @@ function resolveApiUrl(path: string): string {
   const base = getCloudShareApiBase()
 
   return base ? `${base}${path}` : path
+}
+
+export function resolveCloudShareApiUrl(path: string): string {
+  return resolveApiUrl(path)
 }
 
 function isLocalhostBrowserRuntime(): boolean {
@@ -127,17 +177,28 @@ async function parseJsonResponse<T>(response: Response): Promise<T> {
     )
   }
 
-  try {
-    const payload = (await response.json()) as { error?: string }
+   if (
+    isLikelyViteOnlyLocalRuntime() &&
+    (response.status === 404 || response.status === 405)
+  ) {
+    throw new Error(
+      'Bạn đang chạy UI bằng `npm run dev` trên Vite localhost nên browser session không có Vercel Functions `/api/*` để upload cloud và tạo QR. Hãy chạy `vercel dev` tại `http://localhost:3000` hoặc cấu hình `VITE_CLOUD_SHARE_API_BASE` trỏ tới backend đang có cloud-share API.',
+    )
+  }
 
-    if (payload.error) {
-      message = payload.error
-    }
-  } catch {
-    const text = await response.text()
+  const responseText = await response.text()
 
-    if (text.trim()) {
-      message = text
+  if (responseText.trim()) {
+    try {
+      const payload = JSON.parse(responseText) as { error?: string }
+
+      if (payload.error?.trim()) {
+        message = payload.error
+      } else {
+        message = responseText
+      }
+    } catch {
+      message = responseText
     }
   }
 
@@ -215,4 +276,71 @@ export async function completeCloudCaptureShare(
   }
 
   return parseJsonResponse<CompleteCloudCaptureShareResponse>(response)
+}
+
+export async function initCloudCaptureSession(
+  items: InitCloudCaptureSessionItemInput[],
+  signal?: AbortSignal,
+): Promise<InitCloudCaptureSessionResponse> {
+  let response: Response
+
+  try {
+    response = await fetch(resolveApiUrl('/api/capture-sessions/init'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ items }),
+      signal,
+    })
+  } catch (error) {
+    throw toCloudShareNetworkError('init', error)
+  }
+
+  return parseJsonResponse<InitCloudCaptureSessionResponse>(response)
+}
+
+export async function completeCloudCaptureSession(
+  sessionId: string,
+  signal?: AbortSignal,
+): Promise<CompleteCloudCaptureSessionResponse> {
+  let response: Response
+
+  try {
+    response = await fetch(resolveApiUrl('/api/capture-sessions/complete'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ sessionId }),
+      signal,
+    })
+  } catch (error) {
+    throw toCloudShareNetworkError('complete', error)
+  }
+
+  return parseJsonResponse<CompleteCloudCaptureSessionResponse>(response)
+}
+
+export async function fetchCloudCaptureSessionGallery(
+  token: string,
+  signal?: AbortSignal,
+): Promise<CloudCaptureSessionGalleryResponse> {
+  let response: Response
+
+  try {
+    response = await fetch(
+      resolveApiUrl(
+        `/api/capture-sessions/gallery?token=${encodeURIComponent(token)}`,
+      ),
+      {
+        method: 'GET',
+        signal,
+      },
+    )
+  } catch (error) {
+    throw toCloudShareNetworkError('complete', error)
+  }
+
+  return parseJsonResponse<CloudCaptureSessionGalleryResponse>(response)
 }

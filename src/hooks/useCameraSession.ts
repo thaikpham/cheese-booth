@@ -10,9 +10,9 @@ import {
 } from 'react'
 
 import {
-  DEFAULT_SESSION_STATE,
+  DEFAULT_CAMERA_SESSION_STATE,
+  type CameraSessionState,
   type OperatorSettings,
-  type SessionState,
   type SourceDescriptor,
 } from '../types'
 import {
@@ -34,8 +34,8 @@ interface UseCameraSessionOptions {
 
 interface UseCameraSessionResult {
   sources: SourceDescriptor[]
-  session: SessionState
-  setSession: Dispatch<SetStateAction<SessionState>>
+  cameraSession: CameraSessionState
+  setCameraSession: Dispatch<SetStateAction<CameraSessionState>>
   openCapture: () => Promise<void>
   refreshSources: () => Promise<void>
   retryPermission: () => Promise<boolean>
@@ -78,7 +78,7 @@ export function useCameraSession({
   videoRef,
 }: UseCameraSessionOptions): UseCameraSessionResult {
   const [sources, setSources] = useState<SourceDescriptor[]>([])
-  const [session, setSession] = useState(DEFAULT_SESSION_STATE)
+  const [cameraSession, setCameraSession] = useState(DEFAULT_CAMERA_SESSION_STATE)
   const streamRef = useRef<MediaStream | null>(null)
 
   const releaseStream = useCallback(async (stream: MediaStream | null): Promise<void> => {
@@ -103,9 +103,9 @@ export function useCameraSession({
   useEffect(() => {
     let cancelled = false
 
-    if (session.permissionState !== 'granted') {
+    if (cameraSession.permissionState !== 'granted') {
       void releaseStream(streamRef.current)
-      setSession((current) => ({
+      setCameraSession((current) => ({
         ...current,
         streamState:
           current.streamState === 'error' || current.streamState === 'missing-device'
@@ -117,7 +117,7 @@ export function useCameraSession({
 
     if (!settings.deviceId) {
       void releaseStream(streamRef.current)
-      setSession((current) => ({
+      setCameraSession((current) => ({
         ...current,
         streamState: sources.length > 0 ? 'missing-device' : 'idle',
       }))
@@ -128,7 +128,7 @@ export function useCameraSession({
 
     async function startStream(): Promise<void> {
       if (!supportsCameraAccess()) {
-        setSession((current) => ({
+        setCameraSession((current) => ({
           ...current,
           permissionState: 'unknown',
           streamState: 'error',
@@ -137,7 +137,7 @@ export function useCameraSession({
         return
       }
 
-      setSession((current) => ({ ...current, streamState: 'starting' }))
+      setCameraSession((current) => ({ ...current, streamState: 'starting' }))
       await releaseStream(streamRef.current)
 
       try {
@@ -165,7 +165,7 @@ export function useCameraSession({
           await videoRef.current.play().catch(() => undefined)
         }
 
-        setSession((current) => ({
+        setCameraSession((current) => ({
           ...current,
           streamState: 'live',
           lastError: null,
@@ -176,7 +176,7 @@ export function useCameraSession({
         const lastError = getMediaErrorMessage(error)
 
         if (isPermissionDeniedMediaError(error)) {
-          setSession((current) => ({
+          setCameraSession((current) => ({
             ...current,
             permissionState: 'denied',
             streamState: 'idle',
@@ -186,7 +186,7 @@ export function useCameraSession({
         }
 
         if (isMissingDeviceMediaError(error)) {
-          setSession((current) => ({
+          setCameraSession((current) => ({
             ...current,
             permissionState: 'granted',
             streamState: 'missing-device',
@@ -196,7 +196,7 @@ export function useCameraSession({
           return
         }
 
-        setSession((current) => ({
+        setCameraSession((current) => ({
           ...current,
           permissionState:
             isRecoverableMediaStreamError(error) ? 'granted' : current.permissionState,
@@ -211,7 +211,7 @@ export function useCameraSession({
     return () => {
       cancelled = true
     }
-  }, [releaseStream, session.permissionState, settings.deviceId, sources.length, videoRef])
+  }, [cameraSession.permissionState, releaseStream, settings.deviceId, sources.length, videoRef])
 
   useEffect(() => {
     return () => {
@@ -221,7 +221,7 @@ export function useCameraSession({
 
   async function ensurePermission(): Promise<boolean> {
     if (!supportsCameraAccess()) {
-      setSession((current) => ({
+      setCameraSession((current) => ({
         ...current,
         permissionState: 'unknown',
         streamState: 'error',
@@ -239,7 +239,7 @@ export function useCameraSession({
 
       probe.getTracks().forEach((track) => track.stop())
 
-      setSession((current) => ({
+      setCameraSession((current) => ({
         ...current,
         permissionState: 'granted',
         lastError: null,
@@ -250,7 +250,7 @@ export function useCameraSession({
       const lastError = getMediaErrorMessage(error)
 
       if (isPermissionDeniedMediaError(error)) {
-        setSession((current) => ({
+        setCameraSession((current) => ({
           ...current,
           permissionState: 'denied',
           streamState: 'idle',
@@ -260,7 +260,7 @@ export function useCameraSession({
         return false
       }
 
-      setSession((current) => ({
+      setCameraSession((current) => ({
         ...current,
         permissionState:
           isMissingDeviceMediaError(error) || isRecoverableMediaStreamError(error)
@@ -276,10 +276,10 @@ export function useCameraSession({
 
   async function refreshSourcesInternal(
     isDeviceChange = false,
-    hasPermission = session.permissionState === 'granted',
+    hasPermission = cameraSession.permissionState === 'granted',
   ): Promise<void> {
     if (!supportsCameraAccess()) {
-      setSession((current) => ({
+      setCameraSession((current) => ({
         ...current,
         streamState: 'error',
         lastError: 'Runtime hiện tại không hỗ trợ camera.',
@@ -313,7 +313,7 @@ export function useCameraSession({
         )
 
         if (isDeviceChange) {
-          setSession((current) => ({
+          setCameraSession((current) => ({
             ...current,
             lastError: null,
           }))
@@ -329,7 +329,7 @@ export function useCameraSession({
           ...current,
           deviceId: null,
         }))
-        setSession((current) => ({
+        setCameraSession((current) => ({
           ...current,
           streamState: 'missing-device',
           lastError: isDeviceChange
@@ -338,7 +338,7 @@ export function useCameraSession({
         }))
       }
     } catch (error) {
-      setSession((current) => ({
+      setCameraSession((current) => ({
         ...current,
         streamState: 'error',
         lastError: getMediaErrorMessage(error),
@@ -363,7 +363,7 @@ export function useCameraSession({
   }, [])
 
   async function openCapture(): Promise<void> {
-    setSession((current) => ({
+    setCameraSession((current) => ({
       ...current,
       lastError: null,
     }))
@@ -389,8 +389,8 @@ export function useCameraSession({
 
   return {
     sources,
-    session,
-    setSession,
+    cameraSession,
+    setCameraSession,
     openCapture,
     refreshSources: () => refreshSourcesInternal(false),
     retryPermission,

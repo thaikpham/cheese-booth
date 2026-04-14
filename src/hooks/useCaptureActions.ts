@@ -1,6 +1,7 @@
 import {
   startTransition,
   useEffect,
+  useRef,
   useState,
   type Dispatch,
   type RefObject,
@@ -9,35 +10,39 @@ import {
 
 import { playCountdownCue, playShutterCue } from '../lib/captureSounds'
 import {
+  completeCloudCaptureSession,
+  initCloudCaptureSession,
+  uploadCaptureToSignedUrl,
+} from '../lib/cloudShare'
+import {
   BOOMERANG_DURATION_MS,
+  type RenderedCapture,
   renderBoomerangFromVideo,
   renderPhotoFromVideo,
 } from '../lib/media'
-import { pickOutputDirectory, saveCaptureToOutputDir } from '../lib/storage'
 import { getRuntimeEnvironment } from '../lib/runtime'
+import { pickOutputDirectory, saveCaptureToOutputDir } from '../lib/storage'
 import type {
-  BrowserQrQueueItem,
   BoomerangRecordingIndicator,
+  BrowserCaptureSessionState,
+  BrowserSessionItem,
+  CameraSessionState,
   CaptureMode,
   CaptureCloudShare,
   CaptureOutcome,
   CountdownSec,
   OperatorSettings,
-  SessionState,
 } from '../types'
+import { useBrowserCaptureSession } from './useBrowserCaptureSession'
 import { getMediaErrorMessage, transformFromSettings } from './kioskControllerUtils'
-import {
-  BROWSER_CLOUD_STORAGE_REVIEW_LABEL,
-  type PendingCloudShareUpload,
-  useCaptureCloudShare,
-} from './useCaptureCloudShare'
 
 const SHUTTER_CAPTURE_DELAY_MS = 180
+const BROWSER_SESSION_REVIEW_LABEL = 'Cloud session · chờ chốt QR'
 
 interface UseCaptureActionsOptions {
   settings: OperatorSettings
   setSettings: Dispatch<SetStateAction<OperatorSettings>>
-  setSession: Dispatch<SetStateAction<SessionState>>
+  setCameraSession: Dispatch<SetStateAction<CameraSessionState>>
   updateSettings: (next: Partial<OperatorSettings>) => void
   videoRef: RefObject<HTMLVideoElement | null>
 }
@@ -47,13 +52,17 @@ interface UseCaptureActionsResult {
   countdownValue: number | null
   boomerangRecording: BoomerangRecordingIndicator | null
   captureOutcome: CaptureOutcome | null
-  browserQrQueue: BrowserQrQueueItem[]
+  browserSession: BrowserCaptureSessionState
   chooseOutputDir: () => Promise<string | null>
   handleShutter: () => Promise<boolean>
-  approveCaptureOutcomeShare: () => void
+  startBrowserSession: () => void
+  finalizeBrowserSession: () => Promise<boolean>
+  retryBrowserSessionShare: () => Promise<boolean>
+  cancelBrowserSession: () => void
+  resetBrowserSession: () => void
+  approveCaptureOutcome: () => void
   rejectCaptureOutcome: () => void
   dismissCaptureOutcome: () => void
-  retryBrowserQrQueueItem: (id: string) => void
   setMode: (captureMode: CaptureMode) => void
   setCountdown: (countdownSec: CountdownSec) => void
   setRotationQuarter: (rotationQuarter: OperatorSettings['rotationQuarter']) => void
@@ -63,10 +72,36 @@ interface UseCaptureActionsResult {
   setDevice: (deviceId: string) => void
 }
 
+function revokeUrl(url?: string): void {
+  if (url?.startsWith('blob:')) {
+    window.URL.revokeObjectURL(url)
+  }
+}
+
+function disposeBrowserSessionItem(item: BrowserSessionItem | null): void {
+  if (!item) {
+    return
+  }
+
+  revokeUrl(item.previewUrl)
+
+  if (item.posterUrl !== item.previewUrl) {
+    revokeUrl(item.posterUrl)
+  }
+}
+
+function disposeCaptureOutcome(outcome: CaptureOutcome | null): void {
+  if (!outcome) {
+    return
+  }
+
+  revokeUrl(outcome.previewUrl)
+}
+
 export function useCaptureActions({
   settings,
   setSettings,
-  setSession,
+  setCameraSession,
   updateSettings,
   videoRef,
 }: UseCaptureActionsOptions): UseCaptureActionsResult {
@@ -75,22 +110,33 @@ export function useCaptureActions({
   const [boomerangRecording, setBoomerangRecording] =
     useState<BoomerangRecordingIndicator | null>(null)
   const [captureOutcome, setCaptureOutcome] = useState<CaptureOutcome | null>(null)
+  const [stagedBrowserItem, setStagedBrowserItem] = useState<BrowserSessionItem | null>(
+    null,
+  )
   const {
-    browserQrQueue,
-    resetStagedBrowserCloudShare,
-    stageBrowserCloudShare,
-    approveBrowserCloudShare,
-    retryBrowserQrQueueItem,
-  } = useCaptureCloudShare()
-  const previewUrl = captureOutcome?.previewUrl
+    browserSession,
+    startBrowserSession: openBrowserSession,
+    resetBrowserSession: clearBrowserSession,
+    cancelBrowserSession: abortBrowserSession,
+    enterReviewingShot,
+    rejectReviewedShot,
+    addSessionItem,
+    startFinalizing,
+    completeSessionShare,
+    failSessionShare,
+  } = useBrowserCaptureSession()
+  const stagedBrowserItemRef = useRef<BrowserSessionItem | null>(null)
+  const captureOutcomeRef = useRef<CaptureOutcome | null>(null)
+
+  stagedBrowserItemRef.current = stagedBrowserItem
+  captureOutcomeRef.current = captureOutcome
 
   useEffect(() => {
     return () => {
-      if (previewUrl?.startsWith('blob:')) {
-        window.URL.revokeObjectURL(previewUrl)
-      }
+      disposeBrowserSessionItem(stagedBrowserItemRef.current)
+      disposeCaptureOutcome(captureOutcomeRef.current)
     }
-  }, [previewUrl])
+  }, [])
 
   async function chooseOutputDir(): Promise<string | null> {
     try {
@@ -104,14 +150,14 @@ export function useCaptureActions({
         ...current,
         outputDir: selected,
       }))
-      setSession((current) => ({
+      setCameraSession((current) => ({
         ...current,
         lastError: null,
       }))
 
       return selected
     } catch (error) {
-      setSession((current) => ({
+      setCameraSession((current) => ({
         ...current,
         lastError: getMediaErrorMessage(error),
       }))
@@ -155,28 +201,30 @@ export function useCaptureActions({
     )
   }
 
-  async function captureAndPersist(kind: CaptureMode): Promise<{
-    outcome: CaptureOutcome
-    runtimeKind: ReturnType<typeof getRuntimeEnvironment>['kind']
-    rendered: PendingCloudShareUpload
-  }> {
+  async function renderCapture(kind: CaptureMode): Promise<RenderedCapture> {
     const video = videoRef.current
 
     if (!video || video.readyState < 2) {
       throw new Error('Preview chưa sẵn sàng để capture.')
     }
 
-    const rendered =
-      kind === 'photo'
-        ? await renderPhotoFromVideo(video, transformFromSettings(settings))
-        : await renderBoomerangFromVideo(video, transformFromSettings(settings), {
-            onProgress: (progress) => {
-              startTransition(() => {
-                setBoomerangRecording(progress)
-              })
-            },
-          })
+    return kind === 'photo'
+      ? renderPhotoFromVideo(video, transformFromSettings(settings))
+      : renderBoomerangFromVideo(video, transformFromSettings(settings), {
+          onProgress: (progress) => {
+            startTransition(() => {
+              setBoomerangRecording(progress)
+            })
+          },
+        })
+  }
 
+  async function captureAndPersist(kind: CaptureMode): Promise<{
+    outcome: CaptureOutcome
+    runtimeKind: ReturnType<typeof getRuntimeEnvironment>['kind']
+    rendered: RenderedCapture
+  }> {
+    const rendered = await renderCapture(kind)
     const runtime = getRuntimeEnvironment(settings.outputDir)
     const share: CaptureCloudShare = { status: 'idle' }
     let savedPath = settings.outputDir ?? runtime.storageTargetLabel
@@ -193,7 +241,7 @@ export function useCaptureActions({
         Date.now(),
       )
     } else {
-      savedPath = BROWSER_CLOUD_STORAGE_REVIEW_LABEL
+      savedPath = BROWSER_SESSION_REVIEW_LABEL
     }
 
     return {
@@ -207,41 +255,178 @@ export function useCaptureActions({
         share,
       },
       runtimeKind: runtime.kind,
-      rendered: {
-        ...rendered,
-        kind,
-      },
+      rendered,
     }
+  }
+
+  function clearStagedBrowserShot(): void {
+    disposeBrowserSessionItem(stagedBrowserItemRef.current)
+    stagedBrowserItemRef.current = null
+    setStagedBrowserItem(null)
+  }
+
+  function clearCaptureOutcome(): void {
+    disposeCaptureOutcome(captureOutcomeRef.current)
+    captureOutcomeRef.current = null
+    setCaptureOutcome(null)
   }
 
   function dismissCaptureOutcome(): void {
-    resetStagedBrowserCloudShare()
-    setCaptureOutcome(null)
+    const runtime = getRuntimeEnvironment(settings.outputDir)
+
+    if (runtime.kind === 'browser') {
+      rejectCaptureOutcome()
+      return
+    }
+
+    clearCaptureOutcome()
   }
 
   function rejectCaptureOutcome(): void {
-    dismissCaptureOutcome()
+    const runtime = getRuntimeEnvironment(settings.outputDir)
+
+    if (runtime.kind === 'browser') {
+      clearCaptureOutcome()
+      clearStagedBrowserShot()
+      rejectReviewedShot()
+      return
+    }
+
+    clearCaptureOutcome()
   }
 
-  function approveCaptureOutcomeShare(): void {
-    if (captureOutcome?.share.status !== 'idle') {
+  function approveCaptureOutcome(): void {
+    const runtime = getRuntimeEnvironment(settings.outputDir)
+
+    if (runtime.kind !== 'browser') {
       return
     }
 
-    if (!approveBrowserCloudShare()) {
+    const stagedItem = stagedBrowserItemRef.current
+
+    if (!stagedItem) {
       return
     }
 
+    addSessionItem(stagedItem)
+    stagedBrowserItemRef.current = null
+    setStagedBrowserItem(null)
     setCaptureOutcome(null)
+    captureOutcomeRef.current = null
+  }
+
+  function resetBrowserSessionFlow(): void {
+    clearCaptureOutcome()
+    clearStagedBrowserShot()
+    clearBrowserSession()
+  }
+
+  function startBrowserSession(): void {
+    resetBrowserSessionFlow()
+    openBrowserSession()
+  }
+
+  function cancelBrowserSession(): void {
+    clearCaptureOutcome()
+    clearStagedBrowserShot()
+    abortBrowserSession()
+  }
+
+  async function finalizeBrowserSession(): Promise<boolean> {
+    const runtime = getRuntimeEnvironment(settings.outputDir)
+
+    if (runtime.kind !== 'browser' || isBusy) {
+      return false
+    }
+
+    if (browserSession.items.length === 0) {
+      return false
+    }
+
+    setIsBusy(true)
+    setCameraSession((current) => ({
+      ...current,
+      lastError: null,
+    }))
+    startFinalizing()
+
+    try {
+      const init = await initCloudCaptureSession(
+        browserSession.items.map((item) => ({
+          kind: item.kind,
+          mimeType: item.mimeType,
+          extension: item.extension,
+          byteSize: item.blob.size,
+          width: item.width,
+          height: item.height,
+          sequence: item.sequence,
+        })),
+      )
+
+      await Promise.all(
+        init.items.map(async (remoteItem) => {
+          const localItem = browserSession.items.find(
+            (item) => item.sequence === remoteItem.sequence,
+          )
+
+          if (!localItem) {
+            throw new Error(
+              `Không tìm thấy item local cho sequence ${remoteItem.sequence}.`,
+            )
+          }
+
+          await uploadCaptureToSignedUrl(remoteItem.upload, localItem.blob)
+        }),
+      )
+
+      const complete = await completeCloudCaptureSession(init.sessionId)
+
+      completeSessionShare({
+        sessionId: init.sessionId,
+        downloadToken: complete.downloadToken,
+        galleryUrl: complete.galleryUrl,
+        expiresAt: complete.expiresAt,
+      })
+
+      return true
+    } catch (error) {
+      failSessionShare(
+        error instanceof Error
+          ? error.message
+          : 'Không thể hoàn tất cloud session hiện tại.',
+      )
+    } finally {
+      setIsBusy(false)
+    }
+
+    return false
   }
 
   async function handleShutter(): Promise<boolean> {
     if (isBusy) return false
 
+    const runtime = getRuntimeEnvironment(settings.outputDir)
+
+    if (
+      runtime.kind === 'browser' &&
+      (browserSession.status !== 'active' ||
+        browserSession.items.length >= browserSession.maxItems)
+    ) {
+      return false
+    }
+
     setIsBusy(true)
     setBoomerangRecording(null)
-    dismissCaptureOutcome()
-    setSession((current) => ({ ...current, lastError: null }))
+    setCameraSession((current) => ({ ...current, lastError: null }))
+
+    if (runtime.kind === 'desktop') {
+      clearCaptureOutcome()
+    }
+
+    if (runtime.kind === 'browser') {
+      clearCaptureOutcome()
+      clearStagedBrowserShot()
+    }
 
     try {
       await runCountdown()
@@ -260,14 +445,35 @@ export function useCaptureActions({
       )
 
       setCaptureOutcome(outcome)
+      captureOutcomeRef.current = outcome
 
       if (runtimeKind === 'browser') {
-        stageBrowserCloudShare(rendered)
+        const previewUrl = outcome.previewUrl
+        const posterUrl = rendered.posterBlob
+          ? window.URL.createObjectURL(rendered.posterBlob)
+          : previewUrl
+        const nextItem: BrowserSessionItem = {
+          id: crypto.randomUUID(),
+          kind: settings.captureMode,
+          sequence: browserSession.items.length + 1,
+          createdAt: Date.now(),
+          previewUrl,
+          posterUrl,
+          mimeType: rendered.mimeType,
+          extension: rendered.extension,
+          width: rendered.width,
+          height: rendered.height,
+          blob: rendered.blob,
+        }
+
+        stagedBrowserItemRef.current = nextItem
+        setStagedBrowserItem(nextItem)
+        enterReviewingShot()
       }
 
       return true
     } catch (error) {
-      setSession((current) => ({
+      setCameraSession((current) => ({
         ...current,
         lastError: getMediaErrorMessage(error),
       }))
@@ -285,13 +491,17 @@ export function useCaptureActions({
     countdownValue,
     boomerangRecording,
     captureOutcome,
-    browserQrQueue,
+    browserSession,
     chooseOutputDir,
     handleShutter,
-    approveCaptureOutcomeShare,
+    startBrowserSession,
+    finalizeBrowserSession,
+    retryBrowserSessionShare: finalizeBrowserSession,
+    cancelBrowserSession,
+    resetBrowserSession: resetBrowserSessionFlow,
+    approveCaptureOutcome,
     rejectCaptureOutcome,
     dismissCaptureOutcome,
-    retryBrowserQrQueueItem,
     setMode: (captureMode: CaptureMode) => updateSettings({ captureMode }),
     setCountdown: (countdownSec: CountdownSec) => updateSettings({ countdownSec }),
     setRotationQuarter: (rotationQuarter: OperatorSettings['rotationQuarter']) =>
@@ -314,3 +524,4 @@ export function useCaptureActions({
     setDevice: (deviceId: string) => updateSettings({ deviceId: deviceId || null }),
   }
 }
+

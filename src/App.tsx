@@ -1,10 +1,11 @@
 import './index.css'
 
 import cheeseLogo from '../cheese_icon_transparent.svg'
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 
 import { CaptureScreen } from './components/CaptureScreen'
 import { LandingPage } from './components/LandingPage'
+import { SessionGalleryPage } from './components/SessionGalleryPage'
 import { SettingsDashboard } from './components/SettingsDashboard'
 import { useKioskBootstrap } from './hooks/useKioskBootstrap'
 import { useKioskController } from './hooks/useKioskController'
@@ -12,6 +13,7 @@ import { useKioskFullscreen } from './hooks/useKioskFullscreen'
 import { APP_NAME, APP_SUBTITLE } from './lib/branding'
 
 const CAPTURE_ROUTE = '/capture'
+const SESSION_GALLERY_ROUTE = '/session/:token'
 const SETTINGS_ROUTE = '/settings'
 
 function KioskShell() {
@@ -19,12 +21,12 @@ function KioskShell() {
     settings,
     settingsReady,
     sources,
-    session,
+    cameraSession,
     isBusy,
     countdownValue,
     boomerangRecording,
     captureOutcome,
-    browserQrQueue,
+    browserSession,
     previewFrameRef,
     previewCanvasRef,
     videoRef,
@@ -33,10 +35,14 @@ function KioskShell() {
     refreshSources,
     retryPermission,
     handleShutter,
-    approveCaptureOutcomeShare,
+    startBrowserSession,
+    finalizeBrowserSession,
+    retryBrowserSessionShare,
+    cancelBrowserSession,
+    resetBrowserSession,
+    approveCaptureOutcome,
     rejectCaptureOutcome,
     dismissCaptureOutcome,
-    retryBrowserQrQueueItem,
     setMode,
     setCountdown,
     setRotationQuarter,
@@ -77,14 +83,14 @@ function KioskShell() {
             <CaptureScreen
               settings={settings}
               sources={sources}
-              permissionState={session.permissionState}
-              streamState={session.streamState}
-              lastError={session.lastError}
+              permissionState={cameraSession.permissionState}
+              streamState={cameraSession.streamState}
+              lastError={cameraSession.lastError}
               isBusy={isBusy}
               countdownValue={countdownValue}
               boomerangRecording={boomerangRecording}
               captureOutcome={captureOutcome}
-              browserQrQueue={browserQrQueue}
+              browserSession={browserSession}
               previewFrameRef={previewFrameRef}
               previewCanvasRef={previewCanvasRef}
               onRetryPermission={() => {
@@ -96,15 +102,23 @@ function KioskShell() {
               onShutter={() => {
                 void handleShutter()
               }}
+              onStartBrowserSession={startBrowserSession}
+              onFinalizeBrowserSession={() => {
+                void finalizeBrowserSession()
+              }}
+              onRetryBrowserSessionShare={() => {
+                void retryBrowserSessionShare()
+              }}
+              onCancelBrowserSession={cancelBrowserSession}
+              onResetBrowserSession={resetBrowserSession}
               onModeChange={setMode}
               onCountdownChange={setCountdown}
               onSetRotationQuarter={setRotationQuarter}
               onFlipHorizontal={toggleFlipHorizontal}
               onFlipVertical={toggleFlipVertical}
-              onApproveCaptureOutcomeShare={approveCaptureOutcomeShare}
+              onApproveCaptureOutcome={approveCaptureOutcome}
               onRejectCaptureOutcome={rejectCaptureOutcome}
               onDismissCaptureOutcome={dismissCaptureOutcome}
-              onRetryBrowserQrQueueItem={retryBrowserQrQueueItem}
             />
           }
         />
@@ -114,9 +128,9 @@ function KioskShell() {
             <SettingsDashboard
               settings={settings}
               sources={sources}
-              permissionState={session.permissionState}
-              streamState={session.streamState}
-              lastError={session.lastError}
+              permissionState={cameraSession.permissionState}
+              streamState={cameraSession.streamState}
+              lastError={cameraSession.lastError}
               isBusy={isBusy}
               previewFrameRef={previewFrameRef}
               previewCanvasRef={previewCanvasRef}
@@ -145,13 +159,20 @@ function KioskShell() {
 }
 
 function App() {
-  const location = useLocation()
-
-  if (location.pathname === '/') {
-    return <LandingPage />
-  }
-
-  return <main className="app-shell"><KioskShell /></main>
+  return (
+    <Routes>
+      <Route path="/" element={<LandingPage />} />
+      <Route path={SESSION_GALLERY_ROUTE} element={<SessionGalleryPage />} />
+      <Route
+        path="*"
+        element={
+          <main className="app-shell">
+            <KioskShell />
+          </main>
+        }
+      />
+    </Routes>
+  )
 }
 
 export default App

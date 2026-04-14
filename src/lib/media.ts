@@ -14,6 +14,7 @@ export interface RenderedCapture {
   height: number
   mimeType: string
   extension: string
+  posterBlob?: Blob
 }
 
 type SampledFrame = CanvasImageSource & {
@@ -259,6 +260,7 @@ export async function renderPhotoFromVideo(
     height: output.height,
     mimeType: 'image/jpeg',
     extension: 'jpg',
+    posterBlob: blob,
   }
 }
 
@@ -374,6 +376,7 @@ export async function renderBoomerangFromVideo(
   playbackCanvas.width = output.width
   playbackCanvas.height = output.height
   let encoder: Awaited<ReturnType<typeof createH264Mp4Encoder>> | null = null
+  const posterBlob = await toBlob(sampleCanvas, 'image/jpeg', 0.92)
 
   try {
     encoder = await createH264Mp4Encoder()
@@ -421,6 +424,7 @@ export async function renderBoomerangFromVideo(
       height: output.height,
       mimeType: 'video/mp4',
       extension: 'mp4',
+      posterBlob,
     }
   } catch (error) {
     throw new Error(

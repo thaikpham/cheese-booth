@@ -2,4 +2,5 @@
 @import './styles/base.css';
 @import './styles/primitives.css';
 @import './styles/capture.css';
+@import './styles/session-gallery.css';
 @import './styles/settings-dashboard.css';

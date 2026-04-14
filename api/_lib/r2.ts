@@ -23,6 +23,7 @@ interface SignedDownloadUrlOptions {
   storageKey: string
   mimeType: string
   downloadFileName: string
+  disposition?: 'attachment' | 'inline'
 }
 
 const globalForR2 = globalThis as typeof globalThis & {
@@ -111,13 +112,14 @@ export async function createSignedDownloadUrl({
   storageKey,
   mimeType,
   downloadFileName,
+  disposition = 'attachment',
 }: SignedDownloadUrlOptions): Promise<string> {
   const env = getAppEnv()
   const command = new GetObjectCommand({
     Bucket: env.r2BucketName,
     Key: storageKey,
     ResponseContentType: mimeType,
-    ResponseContentDisposition: `attachment; filename="${downloadFileName}"`,
+    ResponseContentDisposition: `${disposition}; filename="${downloadFileName}"`,
   })
 
   return getSignedUrl(getR2Client(), command, {
