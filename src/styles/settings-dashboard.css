@@ -1446,3 +1446,206 @@ select.sd-input {
     grid-template-columns: 1fr;
   }
 }
+
+/* =============================================
+   Responsive Layout Pass
+   ============================================= */
+
+.settings-dashboard {
+  --sd-shell-padding: var(--viewport-shell-padding);
+  --sd-gap: var(--viewport-gap);
+  width: 100%;
+  min-height: 100svh;
+  min-height: 100dvh;
+  overflow: hidden;
+  grid-template-columns:
+    minmax(82px, 108px)
+    minmax(0, 1.02fr)
+    minmax(320px, 0.92fr);
+}
+
+.sd-rail {
+  padding-top: max(16px, var(--safe-area-top));
+}
+
+.sd-controls {
+  min-width: 0;
+  padding: clamp(20px, 2.4vw, 32px);
+}
+
+.sd-install-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.release-download-card-variants {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.sd-preview {
+  top: 0;
+  min-width: 0;
+  height: 100svh;
+  max-height: 100dvh;
+  padding:
+    max(20px, var(--safe-area-top))
+    max(20px, var(--safe-area-right))
+    max(20px, var(--safe-area-bottom))
+    20px;
+}
+
+.sd-preview-stage {
+  flex: 1 1 auto;
+}
+
+.sd-preview-square {
+  width: min(100%, 680px);
+  max-height: min(70svh, 780px);
+}
+
+.sd-floating-back {
+  left: max(24px, var(--safe-area-left));
+  bottom: max(24px, var(--safe-area-bottom));
+}
+
+@media (min-aspect-ratio: 2/1) {
+  .settings-dashboard {
+    grid-template-columns:
+      minmax(88px, 104px)
+      minmax(0, 1fr)
+      minmax(360px, 0.94fr);
+  }
+
+  .sd-preview-square {
+    width: min(100%, 740px);
+  }
+}
+
+@media (max-aspect-ratio: 154/100) {
+  .settings-dashboard {
+    grid-template-columns:
+      minmax(68px, 80px)
+      minmax(0, 1fr)
+      minmax(280px, 0.82fr);
+  }
+
+  .sd-rail-item span {
+    display: none;
+  }
+
+  .sd-rail-item {
+    height: 44px;
+  }
+
+  .sd-install-grid,
+  .release-download-card-variants,
+  .sd-kv-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sd-kv,
+  .sd-kv:nth-child(2n),
+  .sd-kv:nth-last-child(-n+2),
+  .sd-kv--full {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sd-kv:last-child {
+    border-bottom: none;
+  }
+
+  .sd-preview {
+    padding-left: 18px;
+  }
+}
+
+@media (max-aspect-ratio: 11/10), (max-height: 760px) {
+  .settings-dashboard {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    overflow: auto;
+  }
+
+  .sd-rail {
+    flex-direction: row;
+    justify-content: flex-start;
+    padding:
+      max(8px, var(--safe-area-top))
+      12px
+      8px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+
+  .sd-rail-brand {
+    width: auto;
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  .sd-rail-nav {
+    flex-direction: row;
+    gap: 4px;
+    padding: 0;
+  }
+
+  .sd-rail-item {
+    flex-direction: row;
+    gap: 6px;
+    height: 38px;
+    padding: 0 10px;
+    white-space: nowrap;
+  }
+
+  .sd-rail-item span {
+    display: inline;
+    font-size: 0.74rem;
+  }
+
+  .sd-controls {
+    order: 2;
+    padding: 18px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    overflow: visible;
+  }
+
+  .sd-preview {
+    position: static;
+    order: 3;
+    height: auto;
+    max-height: none;
+    padding: 18px;
+  }
+
+  .sd-preview-square {
+    width: 100%;
+    max-height: none;
+  }
+
+  .sd-preview-square.is-landscape .preview-frame {
+    width: 100%;
+    max-height: min(56svh, 420px);
+  }
+
+  .sd-preview-square.is-portrait .preview-frame {
+    width: auto;
+    max-height: min(56svh, 420px);
+  }
+
+  .sd-install-section-head,
+  .sd-install-card-head,
+  .sd-release-banner,
+  .sd-runtime-banner,
+  .release-download-card-head {
+    flex-direction: column;
+  }
+
+  .sd-floating-back {
+    left: auto;
+    right: max(18px, var(--safe-area-right));
+    bottom: max(18px, var(--safe-area-bottom));
+  }
+}

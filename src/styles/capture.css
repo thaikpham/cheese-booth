@@ -2705,3 +2705,424 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* =============================================
+   Responsive Layout Pass
+   ============================================= */
+
+.capture-screen {
+  --capture-shell-padding: var(--viewport-shell-padding);
+  --capture-panel-padding: clamp(18px, 2vw, 34px);
+  --capture-layout-gap: var(--viewport-gap);
+  --capture-browser-side-column: var(--viewport-rail-size);
+  --capture-content-max-width: var(--viewport-content-max-width);
+  --capture-panel-block-size: calc(100svh - (var(--capture-shell-padding) * 2));
+  --capture-control-size: clamp(96px, 6vw, 120px);
+  --capture-shutter-size: clamp(118px, 8.6vw, 146px);
+  --capture-preview-meta-gap: clamp(12px, 1.2vw, 16px);
+  min-height: 100svh;
+  min-height: 100dvh;
+  padding:
+    max(var(--capture-shell-padding), var(--safe-area-top))
+    max(var(--capture-shell-padding), var(--safe-area-right))
+    max(var(--capture-shell-padding), var(--safe-area-bottom))
+    max(var(--capture-shell-padding), var(--safe-area-left));
+}
+
+.capture-panel {
+  width: min(100%, var(--capture-content-max-width));
+  height: min(
+    var(--capture-panel-block-size),
+    calc(100dvh - (var(--capture-shell-padding) * 2))
+  );
+  padding: var(--capture-panel-padding);
+  border-radius: var(--viewport-card-radius);
+}
+
+.capture-layout {
+  gap: var(--capture-layout-gap);
+}
+
+.capture-layout--browser {
+  grid-template-areas: 'filmstrip preview controls';
+  grid-template-columns:
+    minmax(0, var(--capture-browser-side-column))
+    minmax(0, 1fr)
+    minmax(0, var(--capture-browser-side-column));
+}
+
+.capture-layout--browser .capture-film-strip-rail,
+.capture-layout--browser .capture-preview-column,
+.capture-layout--browser .capture-side-rail {
+  min-width: 0;
+  min-height: 0;
+}
+
+.capture-layout--browser .capture-film-strip-rail,
+.capture-layout--browser .capture-side-rail {
+  width: 100%;
+  max-width: none;
+  transform: none;
+}
+
+.capture-layout--browser .capture-film-strip-rail {
+  grid-area: filmstrip;
+  align-self: stretch;
+  justify-self: stretch;
+  height: auto;
+}
+
+.capture-layout--browser .capture-preview-column {
+  grid-area: preview;
+  align-self: stretch;
+}
+
+.capture-layout--browser .capture-side-rail {
+  grid-area: controls;
+  align-self: stretch;
+  justify-self: stretch;
+}
+
+.capture-preview-column {
+  padding-right: 0;
+}
+
+.capture-preview-wrapper {
+  max-width: 100%;
+  max-height: 100%;
+  margin-top: clamp(42px, 6vh, 76px);
+}
+
+.capture-preview-meta {
+  margin-bottom: clamp(10px, 1.4vh, 16px);
+  gap: var(--capture-preview-meta-gap);
+}
+
+.capture-preview-brand,
+.capture-preview-telemetry {
+  min-width: 0;
+}
+
+.capture-preview-brand {
+  max-width: min(48%, 26rem);
+}
+
+.capture-preview-telemetry {
+  max-width: min(48%, 30rem);
+}
+
+.capture-film-strip-rail,
+.capture-side-rail {
+  padding-block: 0;
+}
+
+.capture-film-strip-header,
+.capture-film-strip-card,
+.capture-session-dock {
+  width: 100%;
+}
+
+.capture-film-strip-scroll {
+  align-items: stretch;
+  padding-right: 0;
+}
+
+.capture-film-strip-card {
+  width: 100%;
+}
+
+.capture-side-rail {
+  gap: clamp(16px, 2.4vh, 24px);
+}
+
+.capture-session-dock {
+  gap: 12px;
+}
+
+.capture-session-actions {
+  gap: 8px;
+}
+
+.camera-shutter-dock {
+  width: 100%;
+  min-width: auto;
+}
+
+.capture-settings-button,
+.capture-blend-button {
+  width: var(--capture-control-size);
+  height: var(--capture-control-size);
+}
+
+.capture-settings-button svg,
+.capture-blend-button svg {
+  width: clamp(34px, 2.6vw, 42px);
+  height: clamp(34px, 2.6vw, 42px);
+}
+
+.capture-screen .shutter-button {
+  width: var(--capture-shutter-size);
+  height: var(--capture-shutter-size);
+}
+
+.browser-capture-outcome-backdrop {
+  padding:
+    max(16px, var(--capture-shell-padding))
+    max(16px, var(--capture-shell-padding))
+    max(16px, var(--capture-shell-padding))
+    max(16px, var(--capture-shell-padding));
+}
+
+.browser-capture-outcome-shell {
+  width: min(
+    calc(100vw - (max(16px, var(--capture-shell-padding)) * 2)),
+    1280px
+  );
+  max-height: min(
+    calc(100svh - (max(16px, var(--capture-shell-padding)) * 2)),
+    calc(100dvh - (max(16px, var(--capture-shell-padding)) * 2))
+  );
+  overflow: auto;
+  border-radius: clamp(22px, 2vw, 34px);
+}
+
+@media (min-aspect-ratio: 2/1) {
+  .capture-screen {
+    --capture-browser-side-column: clamp(176px, 10vw, 224px);
+  }
+
+  .capture-preview-wrapper {
+    margin-top: clamp(48px, 6vh, 80px);
+  }
+}
+
+@media (max-aspect-ratio: 154/100) {
+  .capture-screen {
+    --capture-browser-side-column: clamp(148px, 18vw, 210px);
+    --capture-control-size: clamp(84px, 8vw, 108px);
+    --capture-shutter-size: clamp(104px, 10vw, 132px);
+  }
+
+  .capture-layout--browser {
+    grid-template-areas:
+      'preview controls'
+      'filmstrip controls';
+    grid-template-columns:
+      minmax(0, 1fr)
+      minmax(0, var(--capture-browser-side-column));
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .capture-layout--browser .capture-film-strip-rail {
+    align-self: end;
+  }
+
+  .capture-film-strip-scroll {
+    flex-direction: row;
+    align-items: stretch;
+    height: auto;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .capture-film-strip-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .capture-film-strip-card {
+    flex: 0 0 min(26vw, 170px);
+    width: min(26vw, 170px);
+  }
+
+  .capture-side-rail {
+    justify-content: flex-start;
+  }
+
+  .browser-capture-outcome-stage {
+    gap: 16px;
+  }
+
+  .browser-capture-outcome-share-card,
+  .browser-capture-outcome-status-card,
+  .browser-capture-outcome-error-card {
+    width: 100%;
+  }
+}
+
+@media (max-aspect-ratio: 11/10) {
+  .capture-screen {
+    --capture-shell-padding: clamp(14px, 4vw, 20px);
+    --capture-panel-padding: clamp(14px, 4vw, 18px);
+    --capture-control-size: 82px;
+    --capture-shutter-size: 112px;
+  }
+
+  .capture-panel {
+    height: calc(100svh - (var(--capture-shell-padding) * 2));
+    max-height: calc(100dvh - (var(--capture-shell-padding) * 2));
+  }
+
+  .capture-layout,
+  .capture-layout--browser {
+    grid-template-columns: 1fr;
+  }
+
+  .capture-layout--browser {
+    grid-template-areas:
+      'preview'
+      'filmstrip'
+      'controls';
+    grid-template-rows: minmax(0, 1fr) auto auto;
+  }
+
+  .capture-preview-wrapper {
+    margin-top: 0;
+  }
+
+  .capture-preview-meta {
+    position: static;
+    margin-bottom: 12px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .capture-preview-brand,
+  .capture-preview-telemetry {
+    max-width: 100%;
+  }
+
+  .capture-preview-telemetry {
+    justify-content: flex-start;
+  }
+
+  .capture-layout--browser .capture-film-strip-rail,
+  .capture-layout--browser .capture-side-rail {
+    max-width: none;
+  }
+
+  .capture-film-strip-rail {
+    gap: 10px;
+  }
+
+  .capture-film-strip-header {
+    width: 100%;
+  }
+
+  .capture-film-strip-scroll {
+    flex-direction: row;
+    align-items: stretch;
+    height: auto;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 4px;
+  }
+
+  .capture-film-strip-card {
+    flex: 0 0 min(38vw, 164px);
+    width: min(38vw, 164px);
+  }
+
+  .capture-side-rail {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px 16px;
+  }
+
+  .capture-session-dock {
+    flex: 1 1 100%;
+    max-width: min(100%, 420px);
+    order: 1;
+  }
+
+  .camera-shutter-dock {
+    order: 2;
+    width: auto;
+  }
+
+  .capture-settings-button {
+    order: 3;
+  }
+
+  .capture-blend-slot {
+    order: 4;
+  }
+
+  .capture-session-status-card {
+    justify-items: center;
+    text-align: center;
+  }
+
+  .browser-capture-outcome-copy,
+  .browser-capture-outcome-share-copy {
+    justify-items: center;
+    text-align: center;
+  }
+
+  .browser-capture-outcome-share-card,
+  .browser-capture-outcome-status-card {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+}
+
+@media (max-height: 760px) {
+  .capture-screen {
+    --capture-shell-padding: 14px;
+    --capture-panel-padding: 14px;
+    --capture-control-size: 72px;
+    --capture-shutter-size: 98px;
+  }
+
+  .capture-preview-wrapper {
+    margin-top: clamp(34px, 4.5vh, 48px);
+  }
+
+  .capture-preview-meta {
+    margin-bottom: 8px;
+    gap: 10px;
+  }
+
+  .capture-settings-marquee {
+    font-size: 0.66rem;
+    letter-spacing: 0.05em;
+  }
+
+  .capture-preview-telemetry {
+    column-gap: 6px;
+    row-gap: 2px;
+  }
+
+  .capture-film-strip-card,
+  .capture-session-status-card {
+    padding: 10px;
+    border-radius: 18px;
+  }
+
+  .capture-session-action {
+    min-height: 40px;
+  }
+
+  .browser-capture-outcome-shell {
+    gap: 16px;
+  }
+
+  .browser-capture-outcome-title {
+    font-size: clamp(1.6rem, 4vw, 2.1rem);
+  }
+
+  .browser-capture-outcome-preview-frame {
+    max-height: min(48dvh, 420px);
+  }
+
+  .browser-capture-outcome-action {
+    min-height: 58px;
+    border-radius: 16px;
+  }
+}

@@ -161,12 +161,26 @@ function KioskShell() {
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<LandingPage />} />
-      <Route path={SESSION_GALLERY_ROUTE} element={<SessionGalleryPage />} />
+      <Route
+        path="/"
+        element={
+          <div className="route-shell route-shell--public-scroll">
+            <LandingPage />
+          </div>
+        }
+      />
+      <Route
+        path={SESSION_GALLERY_ROUTE}
+        element={
+          <div className="route-shell route-shell--public-scroll">
+            <SessionGalleryPage />
+          </div>
+        }
+      />
       <Route
         path="*"
         element={
-          <main className="app-shell">
+          <main className="route-shell route-shell--kiosk-fit app-shell">
             <KioskShell />
           </main>
         }
