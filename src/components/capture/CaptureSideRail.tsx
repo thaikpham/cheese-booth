@@ -1,23 +1,23 @@
-import { Blend, Settings } from 'lucide-react'
+import { Play, QrCode, RefreshCw, Settings2, X } from 'lucide-react'
 
 import type { BrowserCaptureSessionState } from '../../types'
 
 interface CaptureSideRailProps {
+  layout: 'portrait' | 'landscape'
   captureModeLabel: string
-  runtimeKind: 'desktop' | 'browser'
-  browserSession?: BrowserCaptureSessionState
+  browserSession: BrowserCaptureSessionState
   shutterDisabled: boolean
   onOpenSettings: () => void
   onShutter: () => void
-  onStartBrowserSession?: () => void
-  onFinalizeBrowserSession?: () => void
-  onCancelBrowserSession?: () => void
-  onResetBrowserSession?: () => void
+  onStartBrowserSession: () => void
+  onFinalizeBrowserSession: () => void
+  onCancelBrowserSession: () => void
+  onResetBrowserSession: () => void
 }
 
 export function CaptureSideRail({
+  layout,
   captureModeLabel,
-  runtimeKind,
   browserSession,
   shutterDisabled,
   onOpenSettings,
@@ -27,100 +27,126 @@ export function CaptureSideRail({
   onCancelBrowserSession,
   onResetBrowserSession,
 }: CaptureSideRailProps) {
+  const sessionCountLabel = `${browserSession.items.length}/${browserSession.maxItems}`
+  const dockBadge = getDockBadge(browserSession)
+
   return (
-    <aside className="capture-side-rail" aria-label="Capture controls">
-      <button
-        className="capture-settings-button"
-        type="button"
-        onClick={onOpenSettings}
-        aria-label="Mở cài đặt"
+    <aside
+      className={[
+        'capture-control-dock',
+        `capture-control-dock--${layout}`,
+      ].join(' ')}
+      aria-label="Capture controls"
+    >
+      <div
+        className="capture-session-summary"
+        data-state={browserSession.status}
       >
-        <Settings size={28} />
-      </button>
-
-      {runtimeKind === 'browser' && browserSession ? (
-        <div className="capture-session-dock">
-          <div className="capture-session-status-card">
-            <p className="capture-session-status-title">Session</p>
-            <p className="capture-session-status-copy">
-              {browserSession.items.length}/{browserSession.maxItems} media
+        <div className="capture-session-summary-head">
+          <div className="capture-session-summary-copy">
+            <p className="capture-session-summary-kicker">🎞 Session</p>
+            <p className="capture-session-summary-title">
+              {getSessionTitle(browserSession)}
             </p>
-            <span
-              className="capture-session-status-pill"
-              data-state={browserSession.status}
-            >
-              {getSessionStatusLabel(browserSession.status)}
-            </span>
           </div>
-
-          <div className="capture-session-actions">
-            {browserSession.status === 'idle' ? (
-              <button
-                type="button"
-                className="button primary capture-session-action"
-                onClick={onStartBrowserSession}
-              >
-                Bắt đầu session
-              </button>
-            ) : null}
-
-            {browserSession.status === 'active' ? (
-              <>
-                <button
-                  type="button"
-                  className="button primary capture-session-action"
-                  onClick={onFinalizeBrowserSession}
-                  disabled={browserSession.items.length === 0}
-                >
-                  Kết thúc session
-                </button>
-                <button
-                  type="button"
-                  className="button secondary capture-session-action"
-                  onClick={onCancelBrowserSession}
-                >
-                  Hủy session
-                </button>
-              </>
-            ) : null}
-
-            {browserSession.status === 'ready' || browserSession.status === 'error' ? (
-              <button
-                type="button"
-                className="button primary capture-session-action"
-                onClick={onResetBrowserSession}
-              >
-                Session mới
-              </button>
-            ) : null}
-          </div>
+          <span
+            className="capture-session-status-pill"
+            data-state={browserSession.status}
+          >
+            {getSessionStatusLabel(browserSession.status)}
+          </span>
         </div>
-      ) : null}
+        <p className="capture-session-summary-note">
+          {getSessionStatusCopy(browserSession)}
+        </p>
 
-      <div className="shutter-dock camera-shutter-dock">
-        <button
-          className="shutter-button"
-          onClick={onShutter}
-          disabled={shutterDisabled}
-          aria-label={`Chụp ${captureModeLabel}`}
-        >
-          <span className="shutter-ring" />
-          <span className="shutter-core" />
-        </button>
+        <div className="capture-session-action-row">
+          {browserSession.status === 'idle' ? (
+            <button
+              type="button"
+              className="button primary capture-session-action"
+              onClick={onStartBrowserSession}
+              aria-label="Bắt đầu session"
+            >
+              <Play size={16} />
+              Bắt đầu
+            </button>
+          ) : null}
+
+          {browserSession.status === 'active' ? (
+            <>
+              <button
+                type="button"
+                className="button primary capture-session-action"
+                onClick={onFinalizeBrowserSession}
+                disabled={browserSession.items.length === 0}
+                aria-label="Kết thúc session và tạo QR"
+              >
+                <QrCode size={16} />
+                Tạo QR
+              </button>
+              <button
+                type="button"
+                className="button secondary capture-session-action"
+                onClick={onCancelBrowserSession}
+                aria-label="Hủy session hiện tại"
+              >
+                <X size={16} />
+                Hủy
+              </button>
+            </>
+          ) : null}
+
+          {browserSession.status === 'ready' || browserSession.status === 'error' ? (
+            <button
+              type="button"
+              className="button primary capture-session-action"
+              onClick={onResetBrowserSession}
+              aria-label="Bắt đầu session mới"
+            >
+              <RefreshCw size={16} />
+              Session mới
+            </button>
+          ) : null}
+        </div>
       </div>
 
-      <div className="capture-blend-slot">
+      <div className="capture-bottom-controls">
         <button
-          className="capture-blend-button"
+          className="capture-dock-button"
           type="button"
-          aria-label="Blending modes"
-          disabled
+          onClick={onOpenSettings}
+          aria-label="Mở cài đặt"
         >
-          <Blend size={28} />
+          <Settings2 size={24} />
+          <span className="capture-dock-button-label">Cài đặt</span>
         </button>
-        <p className="capture-blend-tooltip" aria-hidden="true">
-          blending for cheese booth coming soon
-        </p>
+
+        <div className="capture-shutter-stack">
+          <button
+            className="capture-shutter-button"
+            onClick={onShutter}
+            disabled={shutterDisabled}
+            aria-label={`Chụp ${captureModeLabel}`}
+          >
+            <span className="capture-shutter-ring" />
+            <span className="capture-shutter-core" />
+          </button>
+          <p className="capture-shutter-label">
+            {captureModeLabel === 'Photo' ? '📸 Photo' : '🎞 Boomerang'}
+          </p>
+        </div>
+
+        <div
+          className="capture-dock-status"
+          data-state={browserSession.status}
+          aria-label={`Session ${sessionCountLabel}`}
+        >
+          <span className="capture-dock-status-count">{sessionCountLabel}</span>
+          <span className="capture-dock-status-label">
+            {dockBadge.emoji} {dockBadge.label}
+          </span>
+        </div>
       </div>
     </aside>
   )
@@ -144,5 +170,67 @@ function getSessionStatusLabel(
       return 'LỖI'
     default:
       return 'SESSION'
+  }
+}
+
+function getSessionStatusCopy(session: BrowserCaptureSessionState): string {
+  const remainingSlots = Math.max(session.maxItems - session.items.length, 0)
+
+  switch (session.status) {
+    case 'ready':
+      return 'Khách quét 1 mã để mở toàn bộ gallery.'
+    case 'error':
+      return 'Tạo QR chưa xong. Có thể thử lại ngay.'
+    case 'finalizing':
+      return `Đang đẩy ${session.items.length} media lên gallery.`
+    case 'reviewing-shot':
+      return 'Duyệt shot mới trước khi thêm vào session.'
+    default:
+      return remainingSlots === 0
+        ? 'Đã đủ 4 slot, có thể tạo QR.'
+        : `Còn ${remainingSlots} slot để tiếp tục.`
+  }
+}
+
+function getSessionTitle(session: BrowserCaptureSessionState): string {
+  switch (session.status) {
+    case 'idle':
+      return 'Mở session để bắt đầu'
+    case 'active':
+      return 'Chụp thêm hoặc tạo QR'
+    case 'reviewing-shot':
+      return 'Duyệt shot vừa chụp'
+    case 'finalizing':
+      return 'Đang chuẩn bị gallery'
+    case 'ready':
+      return 'QR đã sẵn sàng'
+    case 'error':
+      return 'Cần thử lại phiên này'
+    default:
+      return 'Session'
+  }
+}
+
+function getDockBadge(
+  session: BrowserCaptureSessionState,
+): {
+  emoji: string
+  label: string
+} {
+  switch (session.status) {
+    case 'idle':
+      return { emoji: '🟡', label: 'Start' }
+    case 'active':
+      return { emoji: '🟢', label: 'Live' }
+    case 'reviewing-shot':
+      return { emoji: '✨', label: 'Review' }
+    case 'finalizing':
+      return { emoji: '☁️', label: 'Upload' }
+    case 'ready':
+      return { emoji: '📲', label: 'QR Ready' }
+    case 'error':
+      return { emoji: '⚠️', label: 'Retry' }
+    default:
+      return { emoji: '🎯', label: 'Session' }
   }
 }

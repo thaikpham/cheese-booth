@@ -1,4 +1,5 @@
 export type CaptureMode = 'photo' | 'boomerang'
+export type KioskProfile = 'portrait' | 'landscape'
 
 export type CountdownSec = 3 | 5 | 10
 
@@ -13,7 +14,6 @@ export interface OperatorSettings {
   rotationQuarter: 0 | 1 | 2 | 3
   flipHorizontal: boolean
   flipVertical: boolean
-  outputDir: string | null
 }
 
 export interface SourceDescriptor {
@@ -41,37 +41,12 @@ export interface BoomerangRecordingIndicator {
   progress: number
 }
 
-export type CaptureShareStatus = 'idle' | 'uploading' | 'ready' | 'error'
-
-export interface CaptureCloudShare {
-  status: CaptureShareStatus
-  downloadToken?: string
-  downloadUrl?: string
-  expiresAt?: string
-  errorMessage?: string
-}
-
-export type BrowserQrQueueStatus = 'generating' | 'ready' | 'error'
-
-export interface BrowserQrQueueItem {
-  id: string
-  kind: CaptureMode
-  createdAt: number
-  accentColor: string
-  status: BrowserQrQueueStatus
-  downloadUrl?: string
-  expiresAt?: string
-  errorMessage?: string
-}
-
 export interface CaptureOutcome {
   kind: CaptureMode
   previewUrl: string
   mimeType: string
   width: number
   height: number
-  savedPath: string
-  share: CaptureCloudShare
 }
 
 export type BrowserCaptureSessionStatus =
@@ -113,15 +88,26 @@ export interface BrowserCaptureSessionState {
   share: BrowserSessionShareState
 }
 
-export const DEFAULT_OPERATOR_SETTINGS: OperatorSettings = {
+export const DEFAULT_PORTRAIT_OPERATOR_SETTINGS: OperatorSettings = {
+  captureMode: 'photo',
+  deviceId: null,
+  countdownSec: 3,
+  rotationQuarter: 1,
+  flipHorizontal: true,
+  flipVertical: false,
+}
+
+export const DEFAULT_LANDSCAPE_OPERATOR_SETTINGS: OperatorSettings = {
   captureMode: 'photo',
   deviceId: null,
   countdownSec: 3,
   rotationQuarter: 0,
   flipHorizontal: true,
   flipVertical: false,
-  outputDir: null,
 }
+
+export const DEFAULT_OPERATOR_SETTINGS: OperatorSettings =
+  DEFAULT_LANDSCAPE_OPERATOR_SETTINGS
 
 export const DEFAULT_CAMERA_SESSION_STATE: CameraSessionState = {
   permissionState: 'unknown',

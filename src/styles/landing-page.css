@@ -5,12 +5,8 @@
   display: grid;
   place-items: center;
   width: 100%;
-  min-height: 100%;
-  padding:
-    max(var(--landing-shell-padding), var(--safe-area-top))
-    max(var(--landing-shell-padding), var(--safe-area-right))
-    max(var(--landing-shell-padding), var(--safe-area-bottom))
-    max(var(--landing-shell-padding), var(--safe-area-left));
+  height: 100vh;
+  padding: 0;
   overflow: hidden;
   isolation: isolate;
   background:

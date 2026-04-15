@@ -1,7 +1,5 @@
 import { useEffect } from 'react'
 
-import { isTauriRuntime } from '../lib/runtime'
-
 type FullscreenCapableElement = HTMLElement & {
   webkitRequestFullscreen?: () => Promise<void> | void
 }
@@ -34,47 +32,8 @@ async function requestBrowserFullscreen(): Promise<boolean> {
   return false
 }
 
-function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms)
-  })
-}
-
-async function enforceDesktopFullscreen(): Promise<boolean> {
-  try {
-    const { getCurrentWindow } = await import('@tauri-apps/api/window')
-    const currentWindow = getCurrentWindow()
-
-    for (let attempt = 0; attempt < 4; attempt += 1) {
-      await currentWindow.show()
-      await currentWindow.setDecorations(false)
-      await currentWindow.setResizable(false)
-      await currentWindow.maximize()
-      await currentWindow.setFullscreen(true)
-      await currentWindow.setFocus()
-
-      const [isFullscreen, isMaximized] = await Promise.all([
-        currentWindow.isFullscreen(),
-        currentWindow.isMaximized(),
-      ])
-
-      if (isFullscreen || isMaximized) {
-        return true
-      }
-
-      await wait(180 * (attempt + 1))
-    }
-  } catch {
-    return false
-  }
-
-  return false
-}
-
-export function useKioskFullscreen(settingsReady: boolean): void {
+export function useKioskFullscreen(): void {
   useEffect(() => {
-    if (!settingsReady) return
-
     let disposed = false
 
     const requestOnce = () => {
@@ -83,67 +42,52 @@ export function useKioskFullscreen(settingsReady: boolean): void {
       window.removeEventListener('keydown', requestOnce)
     }
 
-    const queueBrowserRetry = () => {
+    const queueRetry = () => {
       window.addEventListener('pointerdown', requestOnce, { once: true })
       window.addEventListener('keydown', requestOnce, { once: true })
     }
 
-    const handleWindowFocus = () => {
-      if (disposed) return
-
-      if (isTauriRuntime()) {
-        void enforceDesktopFullscreen()
+    const handleFocus = () => {
+      if (disposed || document.fullscreenElement) {
         return
       }
 
-      if (!document.fullscreenElement) {
-        queueBrowserRetry()
-      }
+      void requestBrowserFullscreen()
     }
 
     const handleVisibilityChange = () => {
-      if (disposed || document.visibilityState !== 'visible') return
-      handleWindowFocus()
-    }
-
-    const handleBrowserFullscreenChange = () => {
-      if (disposed || isTauriRuntime()) return
-
-      if (!document.fullscreenElement) {
-        queueBrowserRetry()
-      }
-    }
-
-    async function enterFullscreen(): Promise<void> {
-      if (isTauriRuntime()) {
-        const enteredDesktopFullscreen = await enforceDesktopFullscreen()
-
-        if (enteredDesktopFullscreen) {
-          return
-        }
-      }
-
-      const entered = await requestBrowserFullscreen()
-
-      if (entered || disposed) {
+      if (disposed || document.visibilityState !== 'visible') {
         return
       }
 
-      queueBrowserRetry()
+      handleFocus()
     }
 
-    window.addEventListener('focus', handleWindowFocus)
+    const handleFullscreenChange = () => {
+      if (disposed || document.fullscreenElement) {
+        return
+      }
+
+      void requestBrowserFullscreen()
+    }
+
+    void requestBrowserFullscreen().then((entered) => {
+      if (!entered && !disposed) {
+        queueRetry()
+      }
+    })
+
+    window.addEventListener('focus', handleFocus)
     document.addEventListener('visibilitychange', handleVisibilityChange)
-    document.addEventListener('fullscreenchange', handleBrowserFullscreenChange)
-    void enterFullscreen()
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
 
     return () => {
       disposed = true
-      window.removeEventListener('focus', handleWindowFocus)
+      window.removeEventListener('focus', handleFocus)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
-      document.removeEventListener('fullscreenchange', handleBrowserFullscreenChange)
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
       window.removeEventListener('pointerdown', requestOnce)
       window.removeEventListener('keydown', requestOnce)
     }
-  }, [settingsReady])
+  }, [])
 }

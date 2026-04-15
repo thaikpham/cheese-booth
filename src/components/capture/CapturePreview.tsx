@@ -45,27 +45,27 @@ export function CapturePreview({
   return (
     <div
       ref={previewFrameRef}
-      className="preview-frame capture-preview-frame"
+      className="preview-frame capture-stage-frame"
       style={{ aspectRatio: previewAspect }}
     >
       <canvas
         ref={previewCanvasRef}
-        className="preview-canvas"
+        className="preview-canvas capture-stage-canvas"
         aria-label="Live preview"
       />
 
       {boomerangRecording ? (
-        <div className="capture-preview-recording-indicator">
-          <div className="capture-preview-recording-head">
-            <span className="capture-preview-recording-dot" aria-hidden="true" />
-            <span>Đang quay boomerang</span>
+        <div className="capture-stage-recording">
+          <div className="capture-stage-recording-head">
+            <span className="capture-stage-recording-dot" aria-hidden="true" />
+            <span>🎞 Đang quay</span>
           </div>
-          <div className="capture-preview-recording-meta">
+          <div className="capture-stage-recording-meta">
             <span>{elapsedSeconds}s / {formatSeconds(boomerangRecording.totalMs)}s</span>
             <span>Còn {remainingSeconds}s</span>
           </div>
           <div
-            className="capture-preview-recording-bar"
+            className="capture-stage-recording-bar"
             aria-hidden="true"
           >
             <span
@@ -76,30 +76,30 @@ export function CapturePreview({
       ) : null}
 
       {streamState === 'error' && permissionState === 'granted' ? (
-        <div className="preview-overlay">
-          <p className="preview-title">Camera chưa sẵn sàng</p>
-          <p className="preview-copy">
-            {lastError ?? 'Không thể khởi động camera. Hãy thử làm mới lại source.'}
+        <div className="capture-stage-overlay">
+          <p className="capture-stage-overlay-title">⚠️ Camera chưa sẵn sàng</p>
+          <p className="capture-stage-overlay-copy">
+            {lastError ?? 'Làm mới nguồn camera để quay lại live preview.'}
           </p>
           <button
-            className="button secondary capture-overlay-button"
+            className="button secondary capture-stage-overlay-button"
             onClick={onRefreshSources}
           >
             <RefreshCw size={18} />
-            Làm mới sources
+            Làm mới nguồn
           </button>
         </div>
       ) : null}
 
       {permissionState !== 'granted' && streamState !== 'error' ? (
-        <div className="preview-overlay">
-          <p className="preview-title">Cần quyền truy cập camera</p>
-          <p className="preview-copy">
+        <div className="capture-stage-overlay">
+          <p className="capture-stage-overlay-title">🔒 Bật quyền camera</p>
+          <p className="capture-stage-overlay-copy">
             {lastError ??
-              'Hãy cho phép camera để liệt kê nguồn Sony USB Streaming hoặc Imaging Edge Webcam.'}
+              'Cho phép camera để vào live preview.'}
           </p>
           <button
-            className="button secondary capture-overlay-button"
+            className="button secondary capture-stage-overlay-button"
             onClick={onRetryPermission}
           >
             Thử lại
@@ -108,25 +108,25 @@ export function CapturePreview({
       ) : null}
 
       {permissionState === 'granted' && sourceUnavailable ? (
-        <div className="preview-overlay">
-          <p className="preview-title">Chưa có nguồn camera khả dụng</p>
-          <p className="preview-copy">
-            {lastError ?? 'Kiểm tra lại kết nối USB, sau đó làm mới danh sách nguồn.'}
+        <div className="capture-stage-overlay">
+          <p className="capture-stage-overlay-title">📡 Chưa thấy camera</p>
+          <p className="capture-stage-overlay-copy">
+            {lastError ?? 'Kiểm tra USB rồi làm mới nguồn.'}
           </p>
           <button
-            className="button secondary capture-overlay-button"
+            className="button secondary capture-stage-overlay-button"
             onClick={onRefreshSources}
           >
             <RefreshCw size={18} />
-            Làm mới sources
+            Làm mới nguồn
           </button>
         </div>
       ) : null}
 
       {countdownValue !== null ? (
         <div
-          className={`countdown-overlay ${
-            countdownValue === 0 ? 'countdown-overlay-cheese' : ''
+          className={`capture-stage-countdown ${
+            countdownValue === 0 ? 'capture-stage-countdown--flash' : ''
           }`}
         >
           {countdownValue === 0 ? (
@@ -135,12 +135,12 @@ export function CapturePreview({
                 key="cheese"
                 src={cheeseIcon}
                 alt="Cheese"
-                className="countdown-cheese"
+                className="capture-stage-countdown-cheese"
               />
-              <span className="countdown-flash" aria-hidden="true" />
+              <span className="capture-stage-countdown-flash" aria-hidden="true" />
             </>
           ) : (
-            <span key={countdownValue} className="countdown-number">
+            <span key={countdownValue} className="capture-stage-countdown-number">
               {countdownValue}
             </span>
           )}

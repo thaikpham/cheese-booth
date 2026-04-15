@@ -14,9 +14,9 @@ const SECTION_LINKS: { id: SectionId; label: string; icon: LucideIcon }[] = [
   { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
   { id: 'capture', label: 'Chế độ chụp', icon: Camera },
   { id: 'camera', label: 'Camera', icon: Monitor },
-  { id: 'output', label: 'Thư mục lưu', icon: HardDrive },
+  { id: 'output', label: 'Cloud share', icon: HardDrive },
   { id: 'transform', label: 'Xoay / Lật', icon: RotateCw },
-  { id: 'download', label: 'Tải ứng dụng', icon: Download },
+  { id: 'download', label: 'Desktop app', icon: Download },
 ]
 
 interface SettingsDashboardNavProps {

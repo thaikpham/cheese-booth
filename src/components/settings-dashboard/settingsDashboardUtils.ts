@@ -9,8 +9,6 @@ export type SectionId =
   | 'output'
   | 'transform'
   | 'download'
-
-export type DownloadTab = 'end-user' | 'scripts'
 export type DashboardStatusTone = 'good' | 'warn' | 'neutral'
 
 export interface DashboardStatusSummary {
@@ -43,37 +41,5 @@ export function getStreamSummary(streamState: StreamState): DashboardStatusSumma
       return { label: 'Lỗi', tone: 'warn' }
     default:
       return { label: 'Chờ', tone: 'neutral' }
-  }
-}
-
-export async function copyTextToClipboard(text: string): Promise<void> {
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text)
-    return
-  }
-
-  const textarea = document.createElement('textarea')
-
-  textarea.value = text
-  textarea.setAttribute('readonly', 'true')
-  textarea.style.position = 'fixed'
-  textarea.style.opacity = '0'
-  document.body.appendChild(textarea)
-  textarea.focus()
-  textarea.select()
-  document.execCommand('copy')
-  textarea.remove()
-}
-
-export function platformForInstallScript(
-  platform: string,
-): 'macos' | 'windows' | 'linux' {
-  switch (platform) {
-    case 'macOS':
-      return 'macos'
-    case 'Windows 11':
-      return 'windows'
-    default:
-      return 'linux'
   }
 }

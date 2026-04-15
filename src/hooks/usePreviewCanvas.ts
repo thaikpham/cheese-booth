@@ -1,12 +1,14 @@
 import { useEffect, type RefObject } from 'react'
 
 import { drawTransformedCover, getLargestAspectRect } from '../lib/media'
-import type { OperatorSettings } from '../types'
+import { getKioskProfileAspectRatio } from '../lib/kioskProfiles'
+import type { KioskProfile, OperatorSettings } from '../types'
 
 interface UsePreviewCanvasOptions {
   previewFrameRef: RefObject<HTMLDivElement | null>
   previewCanvasRef: RefObject<HTMLCanvasElement | null>
   videoRef: RefObject<HTMLVideoElement | null>
+  profile: KioskProfile
   settings: Pick<
     OperatorSettings,
     'rotationQuarter' | 'flipHorizontal' | 'flipVertical'
@@ -17,9 +19,11 @@ export function usePreviewCanvas({
   previewFrameRef,
   previewCanvasRef,
   videoRef,
+  profile,
   settings,
 }: UsePreviewCanvasOptions): void {
   const { flipHorizontal, flipVertical, rotationQuarter } = settings
+  const targetAspectRatio = getKioskProfileAspectRatio(profile)
 
   useEffect(() => {
     const previewFrame = previewFrameRef.current
@@ -57,6 +61,7 @@ export function usePreviewCanvas({
           currentVideo.videoWidth,
           currentVideo.videoHeight,
           rotationQuarter,
+          targetAspectRatio,
         )
 
         width = output.width
@@ -90,7 +95,7 @@ export function usePreviewCanvas({
       video?.removeEventListener('loadedmetadata', handleVideoMetadata)
       video?.removeEventListener('loadeddata', handleVideoMetadata)
     }
-  }, [previewCanvasRef, previewFrameRef, rotationQuarter, videoRef])
+  }, [previewCanvasRef, previewFrameRef, rotationQuarter, targetAspectRatio, videoRef])
 
   useEffect(() => {
     let frameId = 0
@@ -108,6 +113,7 @@ export function usePreviewCanvas({
               video.videoWidth,
               video.videoHeight,
               rotationQuarter,
+              targetAspectRatio,
             )
 
             if (canvas.width !== output.width || canvas.height !== output.height) {
@@ -151,6 +157,7 @@ export function usePreviewCanvas({
     previewCanvasRef,
     flipHorizontal,
     flipVertical,
+    targetAspectRatio,
     rotationQuarter,
     videoRef,
   ])

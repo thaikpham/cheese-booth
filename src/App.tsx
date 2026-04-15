@@ -1,7 +1,7 @@
 import './index.css'
 
 import cheeseLogo from '../cheese_icon_transparent.svg'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { matchPath, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 import { CaptureScreen } from './components/CaptureScreen'
 import { LandingPage } from './components/LandingPage'
@@ -11,12 +11,21 @@ import { useKioskBootstrap } from './hooks/useKioskBootstrap'
 import { useKioskController } from './hooks/useKioskController'
 import { useKioskFullscreen } from './hooks/useKioskFullscreen'
 import { APP_NAME, APP_SUBTITLE } from './lib/branding'
+import {
+  DEFAULT_KIOSK_PROFILE,
+  getCaptureRoute,
+  getSettingsRoute,
+  isKioskProfile,
+} from './lib/kioskProfiles'
+import type { KioskProfile } from './types'
 
-const CAPTURE_ROUTE = '/capture'
 const SESSION_GALLERY_ROUTE = '/session/:token'
-const SETTINGS_ROUTE = '/settings'
 
-function KioskShell() {
+function ProfiledKioskExperience({
+  profile,
+}: {
+  profile: KioskProfile
+}) {
   const {
     settings,
     settingsReady,
@@ -30,7 +39,6 @@ function KioskShell() {
     previewFrameRef,
     previewCanvasRef,
     videoRef,
-    chooseOutputDir,
     openCapture,
     refreshSources,
     retryPermission,
@@ -42,7 +50,6 @@ function KioskShell() {
     resetBrowserSession,
     approveCaptureOutcome,
     rejectCaptureOutcome,
-    dismissCaptureOutcome,
     setMode,
     setCountdown,
     setRotationQuarter,
@@ -50,10 +57,10 @@ function KioskShell() {
     toggleFlipHorizontal,
     toggleFlipVertical,
     setDevice,
-  } = useKioskController()
+  } = useKioskController(profile)
 
   useKioskBootstrap(settingsReady, openCapture)
-  useKioskFullscreen(settingsReady)
+  useKioskFullscreen()
 
   if (!settingsReady) {
     return (
@@ -78,9 +85,10 @@ function KioskShell() {
     <>
       <Routes>
         <Route
-          path={CAPTURE_ROUTE}
+          path="/capture/:profile"
           element={
             <CaptureScreen
+              profile={profile}
               settings={settings}
               sources={sources}
               permissionState={cameraSession.permissionState}
@@ -118,14 +126,14 @@ function KioskShell() {
               onFlipVertical={toggleFlipVertical}
               onApproveCaptureOutcome={approveCaptureOutcome}
               onRejectCaptureOutcome={rejectCaptureOutcome}
-              onDismissCaptureOutcome={dismissCaptureOutcome}
             />
           }
         />
         <Route
-          path={SETTINGS_ROUTE}
+          path="/settings/:profile"
           element={
             <SettingsDashboard
+              profile={profile}
               settings={settings}
               sources={sources}
               permissionState={cameraSession.permissionState}
@@ -140,7 +148,6 @@ function KioskShell() {
               onRotate={rotate}
               onFlipHorizontal={toggleFlipHorizontal}
               onFlipVertical={toggleFlipVertical}
-              onPickOutputDir={chooseOutputDir}
               onRetryPermission={() => {
                 void retryPermission()
               }}
@@ -150,12 +157,41 @@ function KioskShell() {
             />
           }
         />
-        <Route path="*" element={<Navigate to={CAPTURE_ROUTE} replace />} />
+        <Route
+          path="/capture"
+          element={<Navigate to={getCaptureRoute(DEFAULT_KIOSK_PROFILE)} replace />}
+        />
+        <Route
+          path="/settings"
+          element={<Navigate to={getSettingsRoute(DEFAULT_KIOSK_PROFILE)} replace />}
+        />
+        <Route
+          path="*"
+          element={<Navigate to={getCaptureRoute(DEFAULT_KIOSK_PROFILE)} replace />}
+        />
       </Routes>
 
       <video ref={videoRef} className="hidden-video" autoPlay muted playsInline />
     </>
   )
+}
+
+function KioskShell() {
+  const location = useLocation()
+  const captureMatch = matchPath('/capture/:profile', location.pathname)
+  const settingsMatch = matchPath('/settings/:profile', location.pathname)
+  const profileParam =
+    captureMatch?.params.profile ?? settingsMatch?.params.profile ?? null
+
+  if (profileParam && !isKioskProfile(profileParam)) {
+    return <Navigate to={getCaptureRoute(DEFAULT_KIOSK_PROFILE)} replace />
+  }
+
+  const profile: KioskProfile = isKioskProfile(profileParam)
+    ? profileParam
+    : DEFAULT_KIOSK_PROFILE
+
+  return <ProfiledKioskExperience key={profile} profile={profile} />
 }
 
 function App() {

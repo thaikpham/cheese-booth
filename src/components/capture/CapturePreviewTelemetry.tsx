@@ -1,5 +1,19 @@
+import {
+  Camera,
+  Clock3,
+  Crop,
+  FlipHorizontal2,
+  FlipVertical2,
+  RotateCw,
+  type LucideIcon,
+} from 'lucide-react'
 import { Fragment, useEffect, useRef, useState } from 'react'
 
+import {
+  getKioskProfileAspectLabel,
+  getKioskRotationOptions,
+} from '../../lib/kioskProfiles'
+import type { KioskProfile } from '../../types'
 import type { CaptureMode, CountdownSec, OperatorSettings } from '../../types'
 
 type InteractiveTokenId =
@@ -17,6 +31,8 @@ interface TelemetryOption {
 
 interface InteractiveTelemetryToken {
   id: InteractiveTokenId
+  emoji: string
+  icon: LucideIcon
   label: string
   interactive: true
   accent: boolean
@@ -25,7 +41,9 @@ interface InteractiveTelemetryToken {
 }
 
 interface PassiveTelemetryToken {
-  id: 'aspect'
+  id: 'aspect' | 'rotation'
+  emoji: string
+  icon: LucideIcon
   label: string
   interactive: false
   accent: boolean
@@ -34,6 +52,7 @@ interface PassiveTelemetryToken {
 type TelemetryToken = InteractiveTelemetryToken | PassiveTelemetryToken
 
 interface CapturePreviewTelemetryProps {
+  profile: KioskProfile
   settings: Pick<
     OperatorSettings,
     'captureMode' | 'countdownSec' | 'rotationQuarter' | 'flipHorizontal' | 'flipVertical'
@@ -49,9 +68,8 @@ interface CapturePreviewTelemetryProps {
 }
 
 const COUNTDOWN_OPTIONS: CountdownSec[] = [3, 5, 10]
-const ROTATION_OPTIONS: OperatorSettings['rotationQuarter'][] = [0, 1, 2, 3]
-
 export function CapturePreviewTelemetry({
+  profile,
   settings,
   disabled = false,
   onModeChange,
@@ -62,6 +80,8 @@ export function CapturePreviewTelemetry({
 }: CapturePreviewTelemetryProps) {
   const rootRef = useRef<HTMLDivElement | null>(null)
   const [openTokenId, setOpenTokenId] = useState<InteractiveTokenId | null>(null)
+  const rotationOptions = getKioskRotationOptions(profile)
+  const rotationLocked = rotationOptions.length === 1
 
   useEffect(() => {
     if (!openTokenId) return
@@ -88,29 +108,29 @@ export function CapturePreviewTelemetry({
   }, [openTokenId])
 
   useEffect(() => {
-    if (disabled) {
-      const frame = window.requestAnimationFrame(() => {
-        setOpenTokenId(null)
-      })
+    if (!disabled) return
 
-      return () => {
-        window.cancelAnimationFrame(frame)
-      }
+    const frame = window.requestAnimationFrame(() => {
+      setOpenTokenId(null)
+    })
+
+    return () => {
+      window.cancelAnimationFrame(frame)
     }
   }, [disabled])
-
-  const isPortrait = settings.rotationQuarter % 2 === 1
 
   const tokens: TelemetryToken[] = [
     {
       id: 'mode',
-      label: settings.captureMode === 'photo' ? 'PHOTO' : 'BOOMERANG',
+      emoji: settings.captureMode === 'photo' ? '📷' : '🎞',
+      icon: Camera,
+      label: settings.captureMode === 'photo' ? 'Photo' : 'Boomerang',
       interactive: true,
       accent: true,
       menuLabel: 'Chọn chế độ capture',
       options: [
         {
-          label: 'PHOTO',
+          label: 'Photo',
           selected: settings.captureMode === 'photo',
           onSelect: () => {
             if (settings.captureMode !== 'photo') {
@@ -119,7 +139,7 @@ export function CapturePreviewTelemetry({
           },
         },
         {
-          label: 'BOOMERANG',
+          label: 'Boomerang',
           selected: settings.captureMode === 'boomerang',
           onSelect: () => {
             if (settings.captureMode !== 'boomerang') {
@@ -131,12 +151,14 @@ export function CapturePreviewTelemetry({
     },
     {
       id: 'countdown',
-      label: `${settings.countdownSec}S`,
+      emoji: '⏱',
+      icon: Clock3,
+      label: `${settings.countdownSec}s`,
       interactive: true,
       accent: true,
       menuLabel: 'Chọn thời gian đếm ngược',
       options: COUNTDOWN_OPTIONS.map((value) => ({
-        label: `${value}S`,
+        label: `${value}s`,
         selected: settings.countdownSec === value,
         onSelect: () => {
           if (settings.countdownSec !== value) {
@@ -147,28 +169,41 @@ export function CapturePreviewTelemetry({
     },
     {
       id: 'aspect',
-      label: isPortrait ? '3:4' : '4:3',
+      emoji: '🖼',
+      icon: Crop,
+      label: getKioskProfileAspectLabel(profile),
       interactive: false,
       accent: false,
     },
     {
       id: 'rotation',
+      emoji: '↻',
+      icon: RotateCw,
       label: `R${settings.rotationQuarter * 90}`,
-      interactive: true,
-      accent: true,
-      menuLabel: 'Chọn góc xoay preview',
-      options: ROTATION_OPTIONS.map((value) => ({
-        label: `R${value * 90}`,
-        selected: settings.rotationQuarter === value,
-        onSelect: () => {
-          if (settings.rotationQuarter !== value) {
-            onSetRotationQuarter(value)
+      ...(rotationLocked
+        ? {
+            interactive: false,
+            accent: false,
           }
-        },
-      })),
+        : {
+            interactive: true,
+            accent: true,
+            menuLabel: 'Chọn góc xoay preview',
+            options: rotationOptions.map((value) => ({
+              label: `R${value * 90}`,
+              selected: settings.rotationQuarter === value,
+              onSelect: () => {
+                if (settings.rotationQuarter !== value) {
+                  onSetRotationQuarter(value)
+                }
+              },
+            })),
+          }),
     },
     {
       id: 'flip-horizontal',
+      emoji: '↔',
+      icon: FlipHorizontal2,
       label: `H${settings.flipHorizontal ? '1' : '0'}`,
       interactive: true,
       accent: true,
@@ -196,6 +231,8 @@ export function CapturePreviewTelemetry({
     },
     {
       id: 'flip-vertical',
+      emoji: '↕',
+      icon: FlipVertical2,
       label: `V${settings.flipVertical ? '1' : '0'}`,
       interactive: true,
       accent: true,
@@ -237,24 +274,25 @@ export function CapturePreviewTelemetry({
   return (
     <div
       ref={rootRef}
-      className="capture-settings-marquee capture-preview-marquee capture-preview-telemetry"
+      className="capture-telemetry-bar"
       role="group"
       aria-label="Capture quick settings"
     >
       {tokens.map((token, index) => {
         const isOpen = token.interactive && openTokenId === token.id
+        const Icon = token.icon
 
         return (
           <Fragment key={token.id}>
-            <span className="capture-preview-token-wrap">
+            <span className="capture-telemetry-chip-wrap">
               {token.interactive ? (
                 <button
                   type="button"
                   className={[
-                    'capture-preview-token',
-                    'capture-preview-token--interactive',
-                    token.accent ? 'capture-preview-token--accent' : '',
-                    isOpen ? 'capture-preview-token--open' : '',
+                    'capture-telemetry-chip',
+                    'capture-telemetry-chip--interactive',
+                    token.accent ? 'capture-telemetry-chip--accent' : '',
+                    isOpen ? 'capture-telemetry-chip--open' : '',
                   ]
                     .filter(Boolean)
                     .join(' ')}
@@ -263,17 +301,28 @@ export function CapturePreviewTelemetry({
                   aria-haspopup="menu"
                   aria-expanded={isOpen}
                 >
-                  {token.label}
+                  <span className="capture-telemetry-chip-main">
+                    <Icon size={15} />
+                    <span aria-hidden="true">{token.emoji}</span>
+                    <span>{token.label}</span>
+                  </span>
+                  <span className="capture-telemetry-chip-caret" aria-hidden="true">
+                    ▾
+                  </span>
                 </button>
               ) : (
-                <span className="capture-preview-token capture-preview-token--passive">
-                  {token.label}
+                <span className="capture-telemetry-chip capture-telemetry-chip--passive">
+                  <span className="capture-telemetry-chip-main">
+                    <Icon size={15} />
+                    <span aria-hidden="true">{token.emoji}</span>
+                    <span>{token.label}</span>
+                  </span>
                 </span>
               )}
 
-              {token.interactive && isOpen && token.options?.length ? (
+              {token.interactive && isOpen && token.options.length ? (
                 <div
-                  className="capture-preview-token-menu"
+                  className="capture-telemetry-menu"
                   role="menu"
                   aria-label={token.menuLabel}
                 >
@@ -282,7 +331,7 @@ export function CapturePreviewTelemetry({
                       key={option.label}
                       type="button"
                       className={[
-                        'capture-preview-token-option',
+                        'capture-telemetry-option',
                         option.selected ? 'is-active' : '',
                       ]
                         .filter(Boolean)
@@ -299,8 +348,8 @@ export function CapturePreviewTelemetry({
             </span>
 
             {index < tokens.length - 1 ? (
-              <span className="capture-preview-token-separator" aria-hidden="true">
-                ·
+              <span className="capture-telemetry-separator" aria-hidden="true">
+                •
               </span>
             ) : null}
           </Fragment>

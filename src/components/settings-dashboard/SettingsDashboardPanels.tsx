@@ -1,11 +1,9 @@
 import {
   Camera,
-  Check,
   Clock3,
-  CodeXml,
+  ExternalLink,
   FlipHorizontal2,
   FlipVertical2,
-  FolderOpen,
   RefreshCw,
   RotateCw,
   Settings2,
@@ -15,25 +13,16 @@ import {
 import type {
   CaptureMode,
   CountdownSec,
+  KioskProfile,
   OperatorSettings,
   PermissionState,
   SourceDescriptor,
 } from '../../types'
+import { DESKTOP_RELEASE_ARCHIVE_URL } from '../../lib/externalLinks'
 import type { RuntimeEnvironment } from '../../lib/runtime'
 import {
-  type ClientPlatformId,
-  type LatestReleaseCatalog,
-  RELEASES_PAGE_URL,
-  type ReleaseStatusDescriptor,
-} from '../../lib/releaseCatalog'
-import { INSTALL_SCRIPT_SNIPPETS } from '../../lib/installScripts'
-import { PlatformIcon } from '../download/PlatformIcon'
-import { ReleaseDownloadCard } from '../download/ReleaseDownloadCard'
-import {
   COUNTDOWN_OPTIONS,
-  platformForInstallScript,
   type DashboardStatusSummary,
-  type DownloadTab,
 } from './settingsDashboardUtils'
 
 interface SettingsDashboardOverviewPanelProps {
@@ -44,6 +33,7 @@ interface SettingsDashboardOverviewPanelProps {
   permissionSummary: DashboardStatusSummary
   streamSummary: DashboardStatusSummary
   orientationLabel: string
+  profileAspectLabel: string
   isBusy: boolean
   lastError: string | null
 }
@@ -56,6 +46,7 @@ export function SettingsDashboardOverviewPanel({
   permissionSummary,
   streamSummary,
   orientationLabel,
+  profileAspectLabel,
   isBusy,
   lastError,
 }: SettingsDashboardOverviewPanelProps) {
@@ -63,7 +54,7 @@ export function SettingsDashboardOverviewPanel({
     <div className="sd-panel">
       <header className="sd-panel-header">
         <h2>Tổng quan</h2>
-        <p className="sd-panel-sub">Trạng thái hệ thống hiện tại</p>
+        <p className="sd-panel-sub">Trạng thái browser kiosk hiện tại</p>
       </header>
 
       <div className="sd-kv-grid">
@@ -89,11 +80,11 @@ export function SettingsDashboardOverviewPanel({
         <div className="sd-kv">
           <span className="sd-kv-label">Hướng</span>
           <span className="sd-kv-value">
-            {orientationLabel} · {settings.rotationQuarter * 90}°
+            {orientationLabel} · {profileAspectLabel}
           </span>
         </div>
         <div className="sd-kv">
-          <span className="sd-kv-label">Cơ chế lưu</span>
+          <span className="sd-kv-label">Share</span>
           <span className="sd-kv-value">
             <span className="sd-status-dot" data-tone={runtime.tone} />
             {runtime.storageSummary}
@@ -107,7 +98,7 @@ export function SettingsDashboardOverviewPanel({
           </span>
         </div>
         <div className="sd-kv">
-          <span className="sd-kv-label">Lưu trữ</span>
+          <span className="sd-kv-label">Đích gallery</span>
           <span className="sd-kv-value">{runtime.storageTargetLabel}</span>
         </div>
       </div>
@@ -300,106 +291,51 @@ export function SettingsDashboardCameraPanel({
 }
 
 interface SettingsDashboardOutputPanelProps {
-  settings: OperatorSettings
+  orientationLabel: string
   runtime: RuntimeEnvironment
-  isBusy: boolean
-  onPickOutputDir: () => Promise<string | null>
 }
 
 export function SettingsDashboardOutputPanel({
-  settings,
+  orientationLabel,
   runtime,
-  isBusy,
-  onPickOutputDir,
 }: SettingsDashboardOutputPanelProps) {
-  const desktopSaveEnabled = runtime.supportsOutputDirectorySelection
-  const outputDirValue = desktopSaveEnabled
-    ? settings.outputDir ?? ''
-    : runtime.storageTargetLabel
-
   return (
     <div className="sd-panel">
       <header className="sd-panel-header">
-        <h2>Đích lưu / Share</h2>
-        <p className="sd-panel-sub">Cấu hình nơi ảnh và video sẽ được ghi hoặc chia sẻ</p>
+        <h2>Cloud share</h2>
+        <p className="sd-panel-sub">Browser kiosk luôn upload session lên cloud share</p>
       </header>
 
-      <div className="sd-field">
-        <label className="sd-field-label">Đường dẫn</label>
-        <div className="sd-input-group">
-          <input
-            className="sd-input"
-            type="text"
-            value={outputDirValue}
-            placeholder={
-              desktopSaveEnabled
-                ? 'Chọn thư mục bằng nút bên phải'
-                : runtime.storageTargetLabel
-            }
-            spellCheck={false}
-            autoComplete="off"
-            readOnly
-            disabled={isBusy || !desktopSaveEnabled}
-          />
-          <button
-            className="sd-input-addon"
-            type="button"
-            onClick={() => {
-              void onPickOutputDir()
-            }}
-            title="Chọn thư mục"
-            disabled={isBusy || !desktopSaveEnabled}
-          >
-            <FolderOpen size={16} />
-          </button>
+      <div className="sd-kv-grid">
+        <div className="sd-kv">
+          <span className="sd-kv-label">Đích lưu</span>
+          <span className="sd-kv-value">{runtime.storageTargetLabel}</span>
+        </div>
+        <div className="sd-kv">
+          <span className="sd-kv-label">Chế độ</span>
+          <span className="sd-kv-value">{runtime.label}</span>
+        </div>
+        <div className="sd-kv">
+          <span className="sd-kv-label">Session max</span>
+          <span className="sd-kv-value">4 media / QR</span>
+        </div>
+        <div className="sd-kv">
+          <span className="sd-kv-label">Orientation mặc định</span>
+          <span className="sd-kv-value">{orientationLabel}</span>
         </div>
       </div>
 
-      {!desktopSaveEnabled ? (
-        <div className="sd-field-hint">
-          Browser mode dùng cloud share để tạo link và QR tải xuống, nên không cần
-          chọn thư mục local trên máy kiosk.
-        </div>
-      ) : null}
-
-      {desktopSaveEnabled ? (
-        <div className="sd-field-hint warn">
-          Bản desktop chỉ cho chọn thư mục qua hộp thoại hệ thống để Tauri giữ
-          quyền ghi file ổn định sau khi app khởi động lại. Không nhập tay đường
-          dẫn.
-        </div>
-      ) : (
-        <div className="sd-kv-grid sd-kv-grid--compact">
-          <div className="sd-kv sd-kv--full">
-            <span className="sd-kv-label">Thư mục hiện tại</span>
-            <span className="sd-kv-value sd-kv-value--mono">
-              {runtime.storageTargetLabel}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {desktopSaveEnabled ? (
-        settings.outputDir ? (
-          <div className="sd-kv-grid sd-kv-grid--compact">
-            <div className="sd-kv sd-kv--full">
-              <span className="sd-kv-label">Thư mục hiện tại</span>
-              <span className="sd-kv-value sd-kv-value--mono">
-                {settings.outputDir}
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div className="sd-field-hint">
-            Desktop mode cần một thư mục local để ghi file sau mỗi lần chụp.
-          </div>
-        )
-      ) : null}
+      <div className="sd-field-hint">
+        Repo browser-only này không còn hỗ trợ local-save hay chọn thư mục trên máy
+        kiosk. Mọi shot đã chốt sẽ được upload khi kết thúc session và sinh một QR
+        gallery duy nhất cho khách.
+      </div>
     </div>
   )
 }
 
 interface SettingsDashboardTransformPanelProps {
+  profile: KioskProfile
   settings: OperatorSettings
   orientationLabel: string
   isBusy: boolean
@@ -409,6 +345,7 @@ interface SettingsDashboardTransformPanelProps {
 }
 
 export function SettingsDashboardTransformPanel({
+  profile,
   settings,
   orientationLabel,
   isBusy,
@@ -416,24 +353,37 @@ export function SettingsDashboardTransformPanel({
   onFlipHorizontal,
   onFlipVertical,
 }: SettingsDashboardTransformPanelProps) {
+  const portraitLocked = profile === 'portrait'
+
   return (
     <div className="sd-panel">
       <header className="sd-panel-header">
-        <h2>Xoay / Lật</h2>
-        <p className="sd-panel-sub">Điều chỉnh hướng và phản chiếu preview</p>
+        <h2>{portraitLocked ? 'Căn khung dọc' : 'Xoay / Lật'}</h2>
+        <p className="sd-panel-sub">
+          {portraitLocked
+            ? 'Profile portrait được khóa theo khung 3:4 dọc để framing ổn định.'
+            : 'Điều chỉnh hướng và phản chiếu preview'}
+        </p>
       </header>
 
       <div className="sd-field">
         <label className="sd-field-label">Xoay</label>
-        <button
-          className="sd-transform-btn"
-          type="button"
-          onClick={onRotate}
-          disabled={isBusy}
-        >
-          <RotateCw size={16} />
-          {settings.rotationQuarter * 90}°
-        </button>
+        {portraitLocked ? (
+          <div className="sd-transform-lock">
+            <RotateCw size={16} />
+            <span>Portrait lock · 90°</span>
+          </div>
+        ) : (
+          <button
+            className="sd-transform-btn"
+            type="button"
+            onClick={onRotate}
+            disabled={isBusy}
+          >
+            <RotateCw size={16} />
+            {settings.rotationQuarter * 90}°
+          </button>
+        )}
       </div>
 
       <div className="sd-field">
@@ -467,7 +417,9 @@ export function SettingsDashboardTransformPanel({
         </div>
         <div className="sd-kv">
           <span className="sd-kv-label">Góc xoay</span>
-          <span className="sd-kv-value">{settings.rotationQuarter * 90}°</span>
+          <span className="sd-kv-value">
+            {portraitLocked ? '90° · Lock' : `${settings.rotationQuarter * 90}°`}
+          </span>
         </div>
         <div className="sd-kv">
           <span className="sd-kv-label">Flip ngang</span>
@@ -494,159 +446,62 @@ export function SettingsDashboardTransformPanel({
   )
 }
 
-interface SettingsDashboardDownloadPanelProps {
-  downloadTab: DownloadTab
-  copiedScriptId: string | null
-  releaseCatalog: LatestReleaseCatalog | null
-  releaseStatus: ReleaseStatusDescriptor
-  currentPlatform: ClientPlatformId
-  onToggleDownloadTab: () => void
-  onCopyInstallScript: (scriptId: string, script: string) => void
-}
-
-export function SettingsDashboardDownloadPanel({
-  downloadTab,
-  copiedScriptId,
-  releaseCatalog,
-  releaseStatus,
-  currentPlatform,
-  onToggleDownloadTab,
-  onCopyInstallScript,
-}: SettingsDashboardDownloadPanelProps) {
-  const releaseGroups = releaseCatalog?.groups ?? []
-
+export function SettingsDashboardDownloadPanel() {
   return (
     <div className="sd-panel sd-download-panel">
       <header className="sd-panel-header">
-        <h2>Tải ứng dụng</h2>
-        <p className="sd-panel-sub">Bản cài cho người dùng cuối và script nội bộ</p>
+        <h2>Desktop app</h2>
+        <p className="sd-panel-sub">Desktop mode đã được tách khỏi browser project này</p>
       </header>
 
-      <div className="sd-download-toggle">
-        <span className="sd-download-toggle-label">Phân phối end-user</span>
-        <button
-          className={`sd-download-toggle-switch ${downloadTab === 'scripts' ? 'active' : ''}`}
-          type="button"
-          onClick={onToggleDownloadTab}
-          aria-label="Toggle between end-user and scripts"
+      <section className="sd-install-section" aria-label="Desktop handoff">
+        <div className="sd-install-section-head">
+          <div>
+            <p className="sd-install-kicker">Archive + handoff</p>
+            <h3>Mở release archive desktop</h3>
+            <p className="sd-install-section-copy">
+              Browser webapp này không còn build hay catalog installer inline nữa.
+              Phần desktop được snapshot sang codebase riêng để tiếp tục phát triển,
+              còn release public hiện tại vẫn được giữ như archive trên GitHub.
+            </p>
+          </div>
+        </div>
+
+        <div className="sd-release-banner sd-release-banner--neutral">
+          <div>
+            <h4>Desktop đã tách khỏi kiosk-app</h4>
+            <p>
+              Những gì đã được tách ra: Tauri runtime, local-save flow, desktop
+              release pipeline, và toàn bộ source desktop baseline trong thư mục
+              riêng `kiosk-desktop`.
+            </p>
+          </div>
+          <a
+            className="sd-release-link"
+            href={DESKTOP_RELEASE_ARCHIVE_URL}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Mở archive
+          </a>
+        </div>
+
+        <div className="sd-field-hint">
+          Nếu cần phân phối installer ngay lúc này, hãy dùng trang Releases archive.
+          Những release desktop mới nên được phát hành từ codebase `kiosk-desktop`
+          sau khi gắn remote riêng.
+        </div>
+
+        <a
+          className="sd-action-btn"
+          href={DESKTOP_RELEASE_ARCHIVE_URL}
+          target="_blank"
+          rel="noreferrer"
         >
-          <span className="sd-toggle-slider" />
-        </button>
-        <span className="sd-download-toggle-label">Nội bộ / nâng cao</span>
-      </div>
-
-      {downloadTab === 'end-user' ? (
-        <section className="sd-install-section" aria-label="Desktop downloads">
-          <div className="sd-install-section-head">
-            <div>
-              <p className="sd-install-kicker">Phân phối end-user</p>
-              <h3>Tải desktop app</h3>
-              <p className="sd-install-section-copy">
-                Hiển thị đúng installer theo từng hệ điều hành, lấy trực tiếp từ
-                GitHub Releases mới nhất của dự án.
-              </p>
-            </div>
-          </div>
-
-          <ReleaseStatusBanner
-            releaseStatus={releaseStatus}
-            releaseUrl={releaseCatalog?.htmlUrl ?? RELEASES_PAGE_URL}
-          />
-
-          {releaseGroups.length > 0 ? (
-            <div className="sd-install-grid">
-              {releaseGroups.map((group) => (
-                <ReleaseDownloadCard
-                  key={group.id}
-                  group={group}
-                  highlighted={group.family === currentPlatform}
-                  compact
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="sd-field-hint">
-              Chưa lấy được danh sách installer từ release hiện tại.
-            </div>
-          )}
-        </section>
-      ) : (
-        <section className="sd-install-section" aria-label="Install scripts">
-          <div className="sd-install-section-head">
-            <div>
-              <p className="sd-install-kicker">Nội bộ / nâng cao</p>
-              <h3>Script cài đặt từ GitHub Releases</h3>
-              <p className="sd-install-section-copy">
-                Giữ lại cho vận hành nội bộ hoặc các tình huống cần script cài đặt
-                có sẵn quyền quản trị.
-              </p>
-            </div>
-          </div>
-
-          <div className="sd-install-grid">
-            {INSTALL_SCRIPT_SNIPPETS.map((installScript) => {
-              const isCopied = copiedScriptId === installScript.id
-
-              return (
-                <button
-                  key={installScript.id}
-                  className={`sd-install-card sd-install-card-btn ${isCopied ? 'copied' : ''}`}
-                  type="button"
-                  onClick={() => {
-                    onCopyInstallScript(installScript.id, installScript.script)
-                  }}
-                  aria-label={`Sao chép script cài đặt cho ${installScript.platform}`}
-                >
-                  <div className="sd-install-card-head">
-                    <div className="sd-install-card-title">
-                      <span className="sd-install-os-icon" aria-hidden="true">
-                        <PlatformIcon
-                          platform={platformForInstallScript(installScript.platform)}
-                        />
-                      </span>
-                      <h4>{installScript.platform}</h4>
-                      <p>{installScript.summary}</p>
-                    </div>
-                    <span className="sd-install-card-icon" aria-hidden="true">
-                      {isCopied ? <Check size={20} /> : <CodeXml size={20} />}
-                    </span>
-                  </div>
-                  <span className="sd-install-card-hint">
-                    {isCopied ? 'Đã sao chép vào clipboard' : 'Nhấn để sao chép script'}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        </section>
-      )}
-    </div>
-  )
-}
-
-interface ReleaseStatusBannerProps {
-  releaseStatus: ReleaseStatusDescriptor
-  releaseUrl: string
-}
-
-function ReleaseStatusBanner({
-  releaseStatus,
-  releaseUrl,
-}: ReleaseStatusBannerProps) {
-  return (
-    <div className={`sd-release-banner sd-release-banner--${releaseStatus.tone}`}>
-      <div>
-        <h4>{releaseStatus.title}</h4>
-        <p>{releaseStatus.message}</p>
-      </div>
-      <a
-        className="sd-release-link"
-        href={releaseUrl}
-        target="_blank"
-        rel="noreferrer"
-      >
-        {releaseStatus.tone === 'ready' ? 'Xem release' : 'Mở trang Releases'}
-      </a>
+          <ExternalLink size={16} />
+          Mở GitHub Releases
+        </a>
+      </section>
     </div>
   )
 }

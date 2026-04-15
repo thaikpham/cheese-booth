@@ -2,17 +2,17 @@
 
 Tài liệu này dùng để bật và test thật flow browser capture mới:
 
-- chụp xong preview local hiện ngay trong modal
-- file upload lên private Cloudflare R2
-- modal hiện QR trỏ tới token download 24 giờ
-- token được kiểm tra ở Vercel Functions
-- signed download URL chỉ sống ngắn hạn
+- chụp xong preview local hiện ngay trong review overlay
+- file upload lên private Cloudflare R2 khi kết thúc session
+- overlay hiện 1 QR duy nhất mở gallery của cả session
+- token gallery được kiểm tra ở Vercel Functions
+- signed media URL chỉ sống ngắn hạn
 - cleanup xóa file theo `expires_at` trong DB
 
 Flow code hiện tại nằm ở:
 
 - Frontend capture: [src/hooks/useCaptureActions.ts](../src/hooks/useCaptureActions.ts)
-- Modal QR: [src/components/capture/CaptureOutcomeModal.tsx](../src/components/capture/CaptureOutcomeModal.tsx)
+- Browser session overlay: [src/components/capture/BrowserSessionOverlay.tsx](../src/components/capture/BrowserSessionOverlay.tsx)
 - Vercel API: [api/](../api)
 - Vercel routing + cron: [vercel.json](../vercel.json)
 - Env template: [.env.example](../.env.example)

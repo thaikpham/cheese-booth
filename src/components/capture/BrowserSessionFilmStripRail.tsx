@@ -1,11 +1,15 @@
+import { GalleryVerticalEnd } from 'lucide-react'
+
 import type { BrowserCaptureSessionState } from '../../types'
 
 interface BrowserSessionFilmStripRailProps {
   session: BrowserCaptureSessionState
+  layout: 'portrait' | 'landscape'
 }
 
 export function BrowserSessionFilmStripRail({
   session,
+  layout,
 }: BrowserSessionFilmStripRailProps) {
   const slots = Array.from({ length: session.maxItems }, (_, index) => {
     const sequence = index + 1
@@ -19,52 +23,61 @@ export function BrowserSessionFilmStripRail({
   })
 
   return (
-    <aside className="capture-film-strip-rail" aria-label="Session film strip">
-      <div className="capture-film-strip-header">
-        <p className="capture-film-strip-title">Session Strip</p>
-        <span className="capture-film-strip-count">
+    <section
+      className={[
+        'capture-session-tray',
+        `capture-session-tray--${layout}`,
+      ].join(' ')}
+      data-orientation={layout}
+      aria-label="Session tray"
+    >
+      <div className="capture-session-tray-header">
+        <div className="capture-session-tray-heading">
+          <GalleryVerticalEnd size={18} />
+          <p className="capture-session-tray-title">Session Tray</p>
+        </div>
+        <span className="capture-session-tray-count">
           {session.items.length}/{session.maxItems}
         </span>
       </div>
 
-      <div className="capture-film-strip-scroll">
+      <div className="capture-session-tray-list">
         {slots.map((slot) => (
           <article
             key={slot.sequence}
-            className="capture-film-strip-card"
+            className="capture-session-card"
             data-filled={slot.item ? 'true' : 'false'}
             data-newest={slot.isNewest ? 'true' : 'false'}
           >
-            <div className="capture-film-strip-media">
+            <div className="capture-session-card-media">
               {slot.item ? (
                 <img
                   src={slot.item.posterUrl}
                   alt={`Session item ${slot.sequence}`}
-                  className="capture-film-strip-image"
+                  className="capture-session-card-image"
                 />
               ) : (
-                <div className="capture-film-strip-placeholder">
+                <div className="capture-session-card-placeholder">
                   <span>Slot {String(slot.sequence).padStart(2, '0')}</span>
                 </div>
               )}
             </div>
 
-            <div className="capture-film-strip-copy">
-              <span className="capture-film-strip-sequence">
+            <div className="capture-session-card-copy">
+              <span className="capture-session-card-sequence">
                 #{String(slot.sequence).padStart(2, '0')}
               </span>
-              <span className="capture-film-strip-kind">
+              <span className="capture-session-card-kind">
                 {slot.item
                   ? slot.item.kind === 'photo'
-                    ? 'PHOTO'
-                    : 'BOOMERANG'
-                  : 'TRỐNG'}
+                    ? '📷 Photo'
+                    : '🎞 Boomerang'
+                  : '○ Trống'}
               </span>
             </div>
           </article>
         ))}
       </div>
-    </aside>
+    </section>
   )
 }
-

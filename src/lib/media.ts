@@ -76,22 +76,22 @@ export function getLargestAspectRect(
   sourceWidth: number,
   sourceHeight: number,
   rotationQuarter: number,
+  targetAspectRatio = getOutputAspectRatio(rotationQuarter),
 ): { width: number; height: number } {
   const normalized = normalizeRotationQuarter(rotationQuarter)
   const rotatedWidth = normalized % 2 === 1 ? sourceHeight : sourceWidth
   const rotatedHeight = normalized % 2 === 1 ? sourceWidth : sourceHeight
-  const targetRatio = getOutputAspectRatio(normalized)
 
-  if (rotatedWidth / rotatedHeight > targetRatio) {
+  if (rotatedWidth / rotatedHeight > targetAspectRatio) {
     return {
-      width: Math.max(1, Math.round(rotatedHeight * targetRatio)),
+      width: Math.max(1, Math.round(rotatedHeight * targetAspectRatio)),
       height: Math.max(1, Math.round(rotatedHeight)),
     }
   }
 
   return {
     width: Math.max(1, Math.round(rotatedWidth)),
-    height: Math.max(1, Math.round(rotatedWidth / targetRatio)),
+    height: Math.max(1, Math.round(rotatedWidth / targetAspectRatio)),
   }
 }
 
@@ -226,11 +226,13 @@ export function drawTransformedCover(
 export async function renderPhotoFromVideo(
   video: HTMLVideoElement,
   transform: TransformSettings,
+  outputAspectRatio: number,
 ): Promise<RenderedCapture> {
   const output = getLargestAspectRect(
     video.videoWidth,
     video.videoHeight,
     transform.rotationQuarter,
+    outputAspectRatio,
   )
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
@@ -286,6 +288,7 @@ async function cloneSampleFrame(canvas: HTMLCanvasElement): Promise<SampledFrame
 export async function renderBoomerangFromVideo(
   video: HTMLVideoElement,
   transform: TransformSettings,
+  outputAspectRatio: number,
   options: RenderBoomerangOptions = {},
 ): Promise<RenderedCapture> {
   const { onProgress } = options
@@ -293,6 +296,7 @@ export async function renderBoomerangFromVideo(
     video.videoWidth,
     video.videoHeight,
     transform.rotationQuarter,
+    outputAspectRatio,
   )
   const constrainedOutput = constrainLongEdge(
     baseOutput.width,

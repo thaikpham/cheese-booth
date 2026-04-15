@@ -1,5 +1,13 @@
-import { LoaderCircle } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import {
+  AlertTriangle,
+  CheckCircle2,
+  CloudUpload,
+  LoaderCircle,
+  QrCode,
+  RefreshCw,
+  Sparkles,
+} from 'lucide-react'
+import { type ReactNode, useEffect, useState } from 'react'
 import * as QRCode from 'qrcode'
 
 import type { BrowserCaptureSessionState, CaptureOutcome } from '../../types'
@@ -40,10 +48,10 @@ export function BrowserSessionOverlay({
 
     void QRCode.toDataURL(galleryUrl, {
       margin: 1,
-      width: 280,
+      width: 640,
       errorCorrectionLevel: 'M',
       color: {
-        dark: '#051018',
+        dark: '#10151d',
         light: '#ffffff',
       },
     })
@@ -78,20 +86,22 @@ export function BrowserSessionOverlay({
     return (
       <div className="browser-capture-outcome-backdrop">
         <section
-          className="browser-capture-outcome-shell"
+          className="browser-capture-outcome-sheet"
           data-state="review"
           role="dialog"
           aria-modal="true"
         >
-          <div className="browser-capture-outcome-copy">
-            <h2 className="browser-capture-outcome-title">Xem lại shot vừa chụp</h2>
-            <p className="browser-capture-outcome-description">
-              Nếu ổn, thêm shot này vào session hiện tại. Bạn còn{' '}
-              {Math.max(0, session.maxItems - session.items.length - 1)} slot sau shot này.
-            </p>
-          </div>
+          <OverlayHeading
+            icon={<Sparkles size={22} />}
+            kicker="Review"
+            title="✨ Duyệt shot"
+            description={`Ổn thì thêm vào session. Còn ${Math.max(
+              0,
+              session.maxItems - session.items.length - 1,
+            )} slot sau shot này.`}
+          />
 
-          <div className="browser-capture-outcome-stage">
+          <div className="browser-capture-outcome-stage browser-capture-outcome-stage--review">
             <div className="browser-capture-outcome-preview-panel">
               <div className="browser-capture-outcome-preview-shell">
                 <div
@@ -138,6 +148,7 @@ export function BrowserSessionOverlay({
                 className="button primary browser-capture-outcome-action browser-capture-outcome-action-primary"
                 onClick={onApproveOutcome}
               >
+                <CheckCircle2 size={18} />
                 Thêm vào session
               </button>
             </div>
@@ -150,19 +161,24 @@ export function BrowserSessionOverlay({
   if (session.status === 'finalizing') {
     return (
       <div className="browser-capture-outcome-backdrop">
-        <section className="browser-capture-outcome-shell" data-state="uploading">
-          <div className="browser-capture-outcome-copy">
-            <h2 className="browser-capture-outcome-title">Đang tạo QR duy nhất</h2>
-            <p className="browser-capture-outcome-description">
-              Upload {session.items.length} media lên cloud và chuẩn bị gallery cho khách…
-            </p>
-          </div>
+        <section
+          className="browser-capture-outcome-sheet"
+          data-state="uploading"
+          role="dialog"
+          aria-modal="true"
+        >
+          <OverlayHeading
+            icon={<CloudUpload size={22} />}
+            kicker="Upload"
+            title="☁️ Đang tạo QR"
+            description={`Đẩy ${session.items.length} media lên gallery.`}
+          />
 
           <div className="browser-capture-outcome-stage browser-capture-outcome-stage--status">
             <div className="browser-capture-outcome-status-card">
-              <LoaderCircle className="browser-capture-outcome-spinner" size={28} />
+              <LoaderCircle className="browser-capture-outcome-spinner" size={32} />
               <p className="browser-capture-outcome-status-copy">
-                Kiosk sẽ giữ nguyên session hiện tại cho đến khi QR sẵn sàng.
+                Kiosk giữ nguyên session cho tới khi QR sẵn sàng.
               </p>
             </div>
           </div>
@@ -176,13 +192,18 @@ export function BrowserSessionOverlay({
 
     return (
       <div className="browser-capture-outcome-backdrop">
-        <section className="browser-capture-outcome-shell" data-state="ready">
-          <div className="browser-capture-outcome-copy">
-            <h2 className="browser-capture-outcome-title">QR session đã sẵn sàng</h2>
-            <p className="browser-capture-outcome-description">
-              Khách chỉ cần quét một mã để mở gallery của toàn bộ session này.
-            </p>
-          </div>
+        <section
+          className="browser-capture-outcome-sheet"
+          data-state="ready"
+          role="dialog"
+          aria-modal="true"
+        >
+          <OverlayHeading
+            icon={<QrCode size={22} />}
+            kicker="QR Ready"
+            title="📲 QR sẵn sàng"
+            description="Một mã cho toàn bộ gallery của session."
+          />
 
           <div className="browser-capture-outcome-stage browser-capture-outcome-stage--ready">
             <div className="browser-capture-outcome-share-card">
@@ -200,7 +221,7 @@ export function BrowserSessionOverlay({
 
               <div className="browser-capture-outcome-share-copy">
                 <p className="browser-capture-outcome-share-title">
-                  1 QR cho {session.items.length} media
+                  🎞 {session.items.length} media
                 </p>
                 <a
                   className="browser-capture-outcome-share-link"
@@ -222,6 +243,7 @@ export function BrowserSessionOverlay({
                 className="button primary browser-capture-outcome-action browser-capture-outcome-action-primary"
                 onClick={onResetBrowserSession}
               >
+                <RefreshCw size={18} />
                 Session mới
               </button>
             </div>
@@ -234,21 +256,29 @@ export function BrowserSessionOverlay({
   if (session.status === 'error') {
     return (
       <div className="browser-capture-outcome-backdrop">
-        <section className="browser-capture-outcome-shell" data-state="error">
-          <div className="browser-capture-outcome-copy">
-            <h2 className="browser-capture-outcome-title">Chưa tạo được QR session</h2>
-            <p className="browser-capture-outcome-description">
-              {session.share.errorMessage ??
-                'Có lỗi khi upload hoặc tạo gallery cho session này.'}
-            </p>
-          </div>
+        <section
+          className="browser-capture-outcome-sheet"
+          data-state="error"
+          role="dialog"
+          aria-modal="true"
+        >
+          <OverlayHeading
+            icon={<AlertTriangle size={22} />}
+            kicker="Retry"
+            title="⚠️ Chưa tạo được QR"
+            description={
+              session.share.errorMessage ??
+              'Có lỗi khi upload hoặc tạo gallery cho session này.'
+            }
+          />
 
-          <div className="browser-capture-outcome-actions">
+          <div className="browser-capture-outcome-actions browser-capture-outcome-actions--stacked">
             <button
               type="button"
               className="button secondary browser-capture-outcome-action"
               onClick={onRetrySessionShare}
             >
+              <RefreshCw size={18} />
               Thử lại upload
             </button>
             <button
@@ -265,6 +295,33 @@ export function BrowserSessionOverlay({
   }
 
   return null
+}
+
+interface OverlayHeadingProps {
+  icon: ReactNode
+  kicker: string
+  title: string
+  description: string
+}
+
+function OverlayHeading({
+  icon,
+  kicker,
+  title,
+  description,
+}: OverlayHeadingProps) {
+  return (
+    <div className="browser-capture-outcome-heading">
+      <div className="browser-capture-outcome-heading-icon" aria-hidden="true">
+        {icon}
+      </div>
+      <div className="browser-capture-outcome-copy">
+        <p className="browser-capture-outcome-kicker">{kicker}</p>
+        <h2 className="browser-capture-outcome-title">{title}</h2>
+        <p className="browser-capture-outcome-description">{description}</p>
+      </div>
+    </div>
+  )
 }
 
 function formatDateTime(value?: string): string {

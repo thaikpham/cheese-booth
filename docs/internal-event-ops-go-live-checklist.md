@@ -2,9 +2,7 @@
 
 Checklist này dành riêng cho bối cảnh production nội bộ tại sự kiện, tập trung vào browser capture + cloud share + QR tải ảnh.
 
-Nếu bạn đang chuẩn bị phát hành desktop installer cho người dùng tự cài, xem riêng:
-
-- [docs/github-actions-trusted-release-checklist.md](./github-actions-trusted-release-checklist.md)
+Nếu bạn đang chuẩn bị phát hành desktop installer cho người dùng tự cài, hãy dùng codebase `../kiosk-desktop` thay vì `kiosk-app`. Repo browser này không còn chứa desktop release workflow.
 
 ## 1. Cấu hình nền tảng
 

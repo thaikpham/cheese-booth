@@ -8,6 +8,11 @@ import {
   type SetStateAction,
 } from 'react'
 
+import {
+  getKioskProfileAspectRatio,
+  getKioskRotationOptions,
+  sanitizeRotationQuarterForProfile,
+} from '../lib/kioskProfiles'
 import { playCountdownCue, playShutterCue } from '../lib/captureSounds'
 import {
   completeCloudCaptureSession,
@@ -15,31 +20,28 @@ import {
   uploadCaptureToSignedUrl,
 } from '../lib/cloudShare'
 import {
-  BOOMERANG_DURATION_MS,
   type RenderedCapture,
   renderBoomerangFromVideo,
   renderPhotoFromVideo,
 } from '../lib/media'
-import { getRuntimeEnvironment } from '../lib/runtime'
-import { pickOutputDirectory, saveCaptureToOutputDir } from '../lib/storage'
 import type {
   BoomerangRecordingIndicator,
   BrowserCaptureSessionState,
   BrowserSessionItem,
   CameraSessionState,
   CaptureMode,
-  CaptureCloudShare,
   CaptureOutcome,
   CountdownSec,
+  KioskProfile,
   OperatorSettings,
 } from '../types'
 import { useBrowserCaptureSession } from './useBrowserCaptureSession'
 import { getMediaErrorMessage, transformFromSettings } from './kioskControllerUtils'
 
 const SHUTTER_CAPTURE_DELAY_MS = 180
-const BROWSER_SESSION_REVIEW_LABEL = 'Cloud session · chờ chốt QR'
 
 interface UseCaptureActionsOptions {
+  profile: KioskProfile
   settings: OperatorSettings
   setSettings: Dispatch<SetStateAction<OperatorSettings>>
   setCameraSession: Dispatch<SetStateAction<CameraSessionState>>
@@ -53,7 +55,6 @@ interface UseCaptureActionsResult {
   boomerangRecording: BoomerangRecordingIndicator | null
   captureOutcome: CaptureOutcome | null
   browserSession: BrowserCaptureSessionState
-  chooseOutputDir: () => Promise<string | null>
   handleShutter: () => Promise<boolean>
   startBrowserSession: () => void
   finalizeBrowserSession: () => Promise<boolean>
@@ -62,7 +63,6 @@ interface UseCaptureActionsResult {
   resetBrowserSession: () => void
   approveCaptureOutcome: () => void
   rejectCaptureOutcome: () => void
-  dismissCaptureOutcome: () => void
   setMode: (captureMode: CaptureMode) => void
   setCountdown: (countdownSec: CountdownSec) => void
   setRotationQuarter: (rotationQuarter: OperatorSettings['rotationQuarter']) => void
@@ -99,6 +99,7 @@ function disposeCaptureOutcome(outcome: CaptureOutcome | null): void {
 }
 
 export function useCaptureActions({
+  profile,
   settings,
   setSettings,
   setCameraSession,
@@ -127,6 +128,7 @@ export function useCaptureActions({
   } = useBrowserCaptureSession()
   const stagedBrowserItemRef = useRef<BrowserSessionItem | null>(null)
   const captureOutcomeRef = useRef<CaptureOutcome | null>(null)
+  const outputAspectRatio = getKioskProfileAspectRatio(profile)
 
   stagedBrowserItemRef.current = stagedBrowserItem
   captureOutcomeRef.current = captureOutcome
@@ -137,34 +139,6 @@ export function useCaptureActions({
       disposeCaptureOutcome(captureOutcomeRef.current)
     }
   }, [])
-
-  async function chooseOutputDir(): Promise<string | null> {
-    try {
-      const selected = await pickOutputDirectory(settings.outputDir)
-
-      if (!selected) {
-        return null
-      }
-
-      setSettings((current) => ({
-        ...current,
-        outputDir: selected,
-      }))
-      setCameraSession((current) => ({
-        ...current,
-        lastError: null,
-      }))
-
-      return selected
-    } catch (error) {
-      setCameraSession((current) => ({
-        ...current,
-        lastError: getMediaErrorMessage(error),
-      }))
-
-      return null
-    }
-  }
 
   async function runCountdown(): Promise<void> {
     for (let tick = Number(settings.countdownSec); tick >= 0; tick -= 1) {
@@ -182,25 +156,6 @@ export function useCaptureActions({
     setCountdownValue(null)
   }
 
-  async function persistDesktopCapture(
-    kind: CaptureMode,
-    blob: Blob,
-    extension: string,
-    createdAt: number,
-  ): Promise<string> {
-    if (!settings.outputDir) {
-      throw new Error('Chưa chọn thư mục lưu media.')
-    }
-
-    return saveCaptureToOutputDir(
-      settings.outputDir,
-      kind,
-      blob,
-      extension,
-      createdAt,
-    )
-  }
-
   async function renderCapture(kind: CaptureMode): Promise<RenderedCapture> {
     const video = videoRef.current
 
@@ -209,8 +164,8 @@ export function useCaptureActions({
     }
 
     return kind === 'photo'
-      ? renderPhotoFromVideo(video, transformFromSettings(settings))
-      : renderBoomerangFromVideo(video, transformFromSettings(settings), {
+      ? renderPhotoFromVideo(video, transformFromSettings(settings), outputAspectRatio)
+      : renderBoomerangFromVideo(video, transformFromSettings(settings), outputAspectRatio, {
           onProgress: (progress) => {
             startTransition(() => {
               setBoomerangRecording(progress)
@@ -219,30 +174,11 @@ export function useCaptureActions({
         })
   }
 
-  async function captureAndPersist(kind: CaptureMode): Promise<{
+  async function captureAndStage(kind: CaptureMode): Promise<{
     outcome: CaptureOutcome
-    runtimeKind: ReturnType<typeof getRuntimeEnvironment>['kind']
     rendered: RenderedCapture
   }> {
     const rendered = await renderCapture(kind)
-    const runtime = getRuntimeEnvironment(settings.outputDir)
-    const share: CaptureCloudShare = { status: 'idle' }
-    let savedPath = settings.outputDir ?? runtime.storageTargetLabel
-
-    if (runtime.kind === 'desktop') {
-      if (!runtime.storageReady) {
-        throw new Error('Chưa chọn thư mục lưu media.')
-      }
-
-      savedPath = await persistDesktopCapture(
-        kind,
-        rendered.blob,
-        rendered.extension,
-        Date.now(),
-      )
-    } else {
-      savedPath = BROWSER_SESSION_REVIEW_LABEL
-    }
 
     return {
       outcome: {
@@ -251,10 +187,7 @@ export function useCaptureActions({
         mimeType: rendered.mimeType,
         width: rendered.width,
         height: rendered.height,
-        savedPath,
-        share,
       },
-      runtimeKind: runtime.kind,
       rendered,
     }
   }
@@ -271,37 +204,13 @@ export function useCaptureActions({
     setCaptureOutcome(null)
   }
 
-  function dismissCaptureOutcome(): void {
-    const runtime = getRuntimeEnvironment(settings.outputDir)
-
-    if (runtime.kind === 'browser') {
-      rejectCaptureOutcome()
-      return
-    }
-
-    clearCaptureOutcome()
-  }
-
   function rejectCaptureOutcome(): void {
-    const runtime = getRuntimeEnvironment(settings.outputDir)
-
-    if (runtime.kind === 'browser') {
-      clearCaptureOutcome()
-      clearStagedBrowserShot()
-      rejectReviewedShot()
-      return
-    }
-
     clearCaptureOutcome()
+    clearStagedBrowserShot()
+    rejectReviewedShot()
   }
 
   function approveCaptureOutcome(): void {
-    const runtime = getRuntimeEnvironment(settings.outputDir)
-
-    if (runtime.kind !== 'browser') {
-      return
-    }
-
     const stagedItem = stagedBrowserItemRef.current
 
     if (!stagedItem) {
@@ -333,13 +242,7 @@ export function useCaptureActions({
   }
 
   async function finalizeBrowserSession(): Promise<boolean> {
-    const runtime = getRuntimeEnvironment(settings.outputDir)
-
-    if (runtime.kind !== 'browser' || isBusy) {
-      return false
-    }
-
-    if (browserSession.items.length === 0) {
+    if (isBusy || browserSession.items.length === 0) {
       return false
     }
 
@@ -403,14 +306,10 @@ export function useCaptureActions({
   }
 
   async function handleShutter(): Promise<boolean> {
-    if (isBusy) return false
-
-    const runtime = getRuntimeEnvironment(settings.outputDir)
-
     if (
-      runtime.kind === 'browser' &&
-      (browserSession.status !== 'active' ||
-        browserSession.items.length >= browserSession.maxItems)
+      isBusy ||
+      browserSession.status !== 'active' ||
+      browserSession.items.length >= browserSession.maxItems
     ) {
       return false
     }
@@ -418,58 +317,38 @@ export function useCaptureActions({
     setIsBusy(true)
     setBoomerangRecording(null)
     setCameraSession((current) => ({ ...current, lastError: null }))
-
-    if (runtime.kind === 'desktop') {
-      clearCaptureOutcome()
-    }
-
-    if (runtime.kind === 'browser') {
-      clearCaptureOutcome()
-      clearStagedBrowserShot()
-    }
+    clearCaptureOutcome()
+    clearStagedBrowserShot()
 
     try {
       await runCountdown()
 
-      if (settings.captureMode === 'boomerang') {
-        setBoomerangRecording({
-          elapsedMs: 0,
-          totalMs: BOOMERANG_DURATION_MS,
-          remainingMs: BOOMERANG_DURATION_MS,
-          progress: 0,
-        })
-      }
-
-      const { outcome, runtimeKind, rendered } = await captureAndPersist(
-        settings.captureMode,
-      )
+      const { outcome, rendered } = await captureAndStage(settings.captureMode)
 
       setCaptureOutcome(outcome)
       captureOutcomeRef.current = outcome
 
-      if (runtimeKind === 'browser') {
-        const previewUrl = outcome.previewUrl
-        const posterUrl = rendered.posterBlob
-          ? window.URL.createObjectURL(rendered.posterBlob)
-          : previewUrl
-        const nextItem: BrowserSessionItem = {
-          id: crypto.randomUUID(),
-          kind: settings.captureMode,
-          sequence: browserSession.items.length + 1,
-          createdAt: Date.now(),
-          previewUrl,
-          posterUrl,
-          mimeType: rendered.mimeType,
-          extension: rendered.extension,
-          width: rendered.width,
-          height: rendered.height,
-          blob: rendered.blob,
-        }
-
-        stagedBrowserItemRef.current = nextItem
-        setStagedBrowserItem(nextItem)
-        enterReviewingShot()
+      const previewUrl = outcome.previewUrl
+      const posterUrl = rendered.posterBlob
+        ? window.URL.createObjectURL(rendered.posterBlob)
+        : previewUrl
+      const nextItem: BrowserSessionItem = {
+        id: crypto.randomUUID(),
+        kind: settings.captureMode,
+        sequence: browserSession.items.length + 1,
+        createdAt: Date.now(),
+        previewUrl,
+        posterUrl,
+        mimeType: rendered.mimeType,
+        extension: rendered.extension,
+        width: rendered.width,
+        height: rendered.height,
+        blob: rendered.blob,
       }
+
+      stagedBrowserItemRef.current = nextItem
+      setStagedBrowserItem(nextItem)
+      enterReviewingShot()
 
       return true
     } catch (error) {
@@ -492,7 +371,6 @@ export function useCaptureActions({
     boomerangRecording,
     captureOutcome,
     browserSession,
-    chooseOutputDir,
     handleShutter,
     startBrowserSession,
     finalizeBrowserSession,
@@ -501,16 +379,25 @@ export function useCaptureActions({
     resetBrowserSession: resetBrowserSessionFlow,
     approveCaptureOutcome,
     rejectCaptureOutcome,
-    dismissCaptureOutcome,
     setMode: (captureMode: CaptureMode) => updateSettings({ captureMode }),
     setCountdown: (countdownSec: CountdownSec) => updateSettings({ countdownSec }),
     setRotationQuarter: (rotationQuarter: OperatorSettings['rotationQuarter']) =>
-      updateSettings({ rotationQuarter }),
+      updateSettings({
+        rotationQuarter: sanitizeRotationQuarterForProfile(profile, rotationQuarter),
+      }),
     rotate: () =>
-      setSettings((current) => ({
-        ...current,
-        rotationQuarter: (((current.rotationQuarter + 1) % 4) as 0 | 1 | 2 | 3),
-      })),
+      setSettings((current) => {
+        const rotationOptions = getKioskRotationOptions(profile)
+        const currentIndex = rotationOptions.indexOf(current.rotationQuarter)
+        const nextRotation =
+          rotationOptions[(currentIndex + 1) % rotationOptions.length] ??
+          rotationOptions[0]
+
+        return {
+          ...current,
+          rotationQuarter: nextRotation,
+        }
+      }),
     toggleFlipHorizontal: () =>
       setSettings((current) => ({
         ...current,
@@ -524,4 +411,3 @@ export function useCaptureActions({
     setDevice: (deviceId: string) => updateSettings({ deviceId: deviceId || null }),
   }
 }
-

@@ -1,24 +1,24 @@
-import {
-  ArrowLeft,
-} from 'lucide-react'
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { ArrowLeft } from 'lucide-react'
+import { useState, type RefObject } from 'react'
 import { Link } from 'react-router-dom'
 
+import cheeseLogo from '../../cheese_icon_transparent.svg'
+import {
+  getCaptureRoute,
+  getKioskPreviewAspect,
+  getKioskProfileAspectLabel,
+  getKioskProfileLabel,
+} from '../lib/kioskProfiles'
 import type {
   CaptureMode,
   CountdownSec,
+  KioskProfile,
   OperatorSettings,
   PermissionState,
   SourceDescriptor,
   StreamState,
 } from '../types'
-import cheeseLogo from '../../cheese_icon_transparent.svg'
-import { useLatestReleaseCatalog } from '../hooks/useLatestReleaseCatalog'
 import { APP_NAME, APP_SUBTITLE } from '../lib/branding'
-import {
-  detectClientPlatform,
-  getReleaseStatusDescriptor,
-} from '../lib/releaseCatalog'
 import { getRuntimeEnvironment } from '../lib/runtime'
 import {
   SettingsDashboardCameraPanel,
@@ -31,16 +31,13 @@ import {
 import { SettingsDashboardNav } from './settings-dashboard/SettingsDashboardNav'
 import { SettingsDashboardPreview } from './settings-dashboard/SettingsDashboardPreview'
 import {
-  copyTextToClipboard,
   getPermissionSummary,
   getStreamSummary,
   type SectionId,
-  type DownloadTab,
 } from './settings-dashboard/settingsDashboardUtils'
 
-const CAPTURE_ROUTE = '/capture'
-
 interface SettingsDashboardProps {
+  profile: KioskProfile
   settings: OperatorSettings
   sources: SourceDescriptor[]
   permissionState: PermissionState
@@ -55,12 +52,12 @@ interface SettingsDashboardProps {
   onRotate: () => void
   onFlipHorizontal: () => void
   onFlipVertical: () => void
-  onPickOutputDir: () => Promise<string | null>
   onRetryPermission: () => void
   onRefreshSources: () => void
 }
 
 export function SettingsDashboard({
+  profile,
   settings,
   sources,
   permissionState,
@@ -75,56 +72,21 @@ export function SettingsDashboard({
   onRotate,
   onFlipHorizontal,
   onFlipVertical,
-  onPickOutputDir,
   onRetryPermission,
   onRefreshSources,
 }: SettingsDashboardProps) {
   const [activeSection, setActiveSection] = useState<SectionId>('overview')
-  const [downloadTab, setDownloadTab] = useState<DownloadTab>('end-user')
-  const [copiedScriptId, setCopiedScriptId] = useState<string | null>(null)
-  const copiedResetTimerRef = useRef<number | null>(null)
-  const releaseCatalog = useLatestReleaseCatalog()
 
-  useEffect(() => {
-    return () => {
-      if (copiedResetTimerRef.current !== null) {
-        window.clearTimeout(copiedResetTimerRef.current)
-      }
-    }
-  }, [])
-
-  const isPortrait = settings.rotationQuarter % 2 === 1
-  const previewAspect = isPortrait ? '3 / 4' : '4 / 3'
+  const isPortrait = profile === 'portrait'
+  const previewAspect = getKioskPreviewAspect(profile)
+  const profileAspectLabel = getKioskProfileAspectLabel(profile)
   const captureModeLabel = settings.captureMode === 'photo' ? 'Photo' : 'Boomerang'
   const currentSourceLabel =
-    sources.find((s) => s.deviceId === settings.deviceId)?.label ?? 'Chưa chọn'
+    sources.find((source) => source.deviceId === settings.deviceId)?.label ?? 'Chưa chọn'
   const permissionSummary = getPermissionSummary(permissionState)
   const streamSummary = getStreamSummary(streamState)
-  const orientationLabel = isPortrait ? 'Portrait' : 'Landscape'
-  const runtime = getRuntimeEnvironment(settings.outputDir)
-  const currentPlatform = detectClientPlatform()
-  const releaseStatus = getReleaseStatusDescriptor(releaseCatalog)
-
-  async function handleCopyInstallScript(
-    scriptId: string,
-    script: string,
-  ): Promise<void> {
-    try {
-      await copyTextToClipboard(script)
-      setCopiedScriptId(scriptId)
-
-      if (copiedResetTimerRef.current !== null) {
-        window.clearTimeout(copiedResetTimerRef.current)
-      }
-
-      copiedResetTimerRef.current = window.setTimeout(() => {
-        setCopiedScriptId((current) => (current === scriptId ? null : current))
-        copiedResetTimerRef.current = null
-      }, 1600)
-    } catch (error) {
-      console.error('Không thể sao chép script cài đặt.', error)
-    }
-  }
+  const orientationLabel = getKioskProfileLabel(profile)
+  const runtime = getRuntimeEnvironment()
 
   function renderContent() {
     switch (activeSection) {
@@ -138,6 +100,7 @@ export function SettingsDashboard({
             permissionSummary={permissionSummary}
             streamSummary={streamSummary}
             orientationLabel={orientationLabel}
+            profileAspectLabel={profileAspectLabel}
             isBusy={isBusy}
             lastError={lastError}
           />
@@ -173,16 +136,15 @@ export function SettingsDashboard({
       case 'output':
         return (
           <SettingsDashboardOutputPanel
-            settings={settings}
+            orientationLabel={orientationLabel}
             runtime={runtime}
-            isBusy={isBusy}
-            onPickOutputDir={onPickOutputDir}
           />
         )
 
       case 'transform':
         return (
           <SettingsDashboardTransformPanel
+            profile={profile}
             settings={settings}
             orientationLabel={orientationLabel}
             isBusy={isBusy}
@@ -193,29 +155,12 @@ export function SettingsDashboard({
         )
 
       case 'download':
-        return (
-          <SettingsDashboardDownloadPanel
-            downloadTab={downloadTab}
-            copiedScriptId={copiedScriptId}
-            releaseCatalog={releaseCatalog}
-            releaseStatus={releaseStatus}
-            currentPlatform={currentPlatform}
-            onToggleDownloadTab={() =>
-              setDownloadTab((current) =>
-                current === 'end-user' ? 'scripts' : 'end-user',
-              )
-            }
-            onCopyInstallScript={(scriptId, script) => {
-              void handleCopyInstallScript(scriptId, script)
-            }}
-          />
-        )
+        return <SettingsDashboardDownloadPanel />
     }
   }
 
   return (
-    <section className="settings-dashboard">
-      {/* ── Compact nav rail ── */}
+    <section className={`settings-dashboard settings-dashboard--${profile}`}>
       <aside className="sd-rail">
         <div className="sd-rail-brand">
           <img
@@ -234,31 +179,61 @@ export function SettingsDashboard({
         />
       </aside>
 
-      {/* ── Controls panel ── */}
-      <main className="sd-controls">
-        {renderContent()}
-      </main>
+      {isPortrait ? (
+        <div className="sd-portrait-stack">
+          <SettingsDashboardPreview
+            settings={settings}
+            sources={sources}
+            permissionState={permissionState}
+            streamState={streamState}
+            lastError={lastError}
+            previewFrameRef={previewFrameRef}
+            previewCanvasRef={previewCanvasRef}
+            previewAspect={previewAspect}
+            profile={profile}
+            isPortrait={isPortrait}
+            currentSourceLabel={currentSourceLabel}
+            streamSummary={streamSummary}
+            captureModeLabel={captureModeLabel}
+            onRetryPermission={onRetryPermission}
+            onRefreshSources={onRefreshSources}
+          />
 
-      {/* ── Always-visible preview ── */}
-      <SettingsDashboardPreview
-        settings={settings}
-        sources={sources}
-        permissionState={permissionState}
-        streamState={streamState}
-        lastError={lastError}
-        previewFrameRef={previewFrameRef}
-        previewCanvasRef={previewCanvasRef}
-        previewAspect={previewAspect}
-        isPortrait={isPortrait}
-        currentSourceLabel={currentSourceLabel}
-        streamSummary={streamSummary}
-        captureModeLabel={captureModeLabel}
-        onRetryPermission={onRetryPermission}
-        onRefreshSources={onRefreshSources}
-      />
+          <main className="sd-controls sd-controls--portrait">
+            {renderContent()}
+          </main>
+        </div>
+      ) : (
+        <>
+          <main className="sd-controls">
+            {renderContent()}
+          </main>
 
-      {/* ── Floating Back Button ── */}
-      <Link className="sd-floating-back" to={CAPTURE_ROUTE} title="Quay lại chụp">
+          <SettingsDashboardPreview
+            settings={settings}
+            sources={sources}
+            permissionState={permissionState}
+            streamState={streamState}
+            lastError={lastError}
+            previewFrameRef={previewFrameRef}
+            previewCanvasRef={previewCanvasRef}
+            previewAspect={previewAspect}
+            profile={profile}
+            isPortrait={isPortrait}
+            currentSourceLabel={currentSourceLabel}
+            streamSummary={streamSummary}
+            captureModeLabel={captureModeLabel}
+            onRetryPermission={onRetryPermission}
+            onRefreshSources={onRefreshSources}
+          />
+        </>
+      )}
+
+      <Link
+        className="sd-floating-back"
+        to={getCaptureRoute(profile)}
+        title="Quay lại chụp"
+      >
         <ArrowLeft size={24} />
       </Link>
     </section>

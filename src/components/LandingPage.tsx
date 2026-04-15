@@ -1,12 +1,17 @@
 import { Link } from 'react-router-dom'
 import cheeseLogo from '../../cheese_icon_transparent.svg'
+import { getCaptureRoute, DEFAULT_KIOSK_PROFILE } from '../lib/kioskProfiles'
 import '../styles/landing-page.css'
 
 export function LandingPage() {
   return (
     <main className="landing-page">
       <div className="landing-hero-content">
-        <Link to="/capture" className="landing-cheese-container" title="Open Kiosk">
+        <Link
+          to={getCaptureRoute(DEFAULT_KIOSK_PROFILE)}
+          className="landing-cheese-container"
+          title="Open Kiosk"
+        >
           <div className="landing-backlight" />
           <img
             src={cheeseLogo}

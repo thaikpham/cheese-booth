@@ -1,22 +1,24 @@
 import { useRef } from 'react'
 
+import type { KioskProfile } from '../types'
 import { useCameraSession } from './useCameraSession'
 import { useCaptureActions } from './useCaptureActions'
 import { useOperatorSettings } from './useOperatorSettings'
 import { usePreviewCanvas } from './usePreviewCanvas'
 
-export function useKioskController() {
+export function useKioskController(profile: KioskProfile) {
   const previewFrameRef = useRef<HTMLDivElement | null>(null)
   const previewCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
 
   const { settings, settingsReady, setSettings, updateSettings } =
-    useOperatorSettings()
+    useOperatorSettings(profile)
 
   usePreviewCanvas({
     previewFrameRef,
     previewCanvasRef,
     videoRef,
+    profile,
     settings,
   })
 
@@ -40,7 +42,6 @@ export function useKioskController() {
     boomerangRecording,
     captureOutcome,
     browserSession,
-    chooseOutputDir,
     handleShutter,
     startBrowserSession,
     finalizeBrowserSession,
@@ -49,7 +50,6 @@ export function useKioskController() {
     resetBrowserSession,
     approveCaptureOutcome,
     rejectCaptureOutcome,
-    dismissCaptureOutcome,
     setMode,
     setCountdown,
     setRotationQuarter,
@@ -58,6 +58,7 @@ export function useKioskController() {
     toggleFlipVertical,
     setDevice,
   } = useCaptureActions({
+    profile,
     settings,
     setSettings,
     setCameraSession,
@@ -78,7 +79,6 @@ export function useKioskController() {
     previewFrameRef,
     previewCanvasRef,
     videoRef,
-    chooseOutputDir,
     openCapture,
     refreshSources,
     retryPermission,
@@ -90,7 +90,6 @@ export function useKioskController() {
     resetBrowserSession,
     approveCaptureOutcome,
     rejectCaptureOutcome,
-    dismissCaptureOutcome,
     setMode,
     setCountdown,
     setRotationQuarter,
