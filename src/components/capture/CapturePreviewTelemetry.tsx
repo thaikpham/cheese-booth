@@ -4,7 +4,9 @@ import {
   Crop,
   FlipHorizontal2,
   FlipVertical2,
+  Monitor,
   RotateCw,
+  Smartphone,
   type LucideIcon,
 } from 'lucide-react'
 import { Fragment, useEffect, useRef, useState } from 'react'
@@ -65,6 +67,7 @@ interface CapturePreviewTelemetryProps {
   ) => void
   onFlipHorizontal: () => void
   onFlipVertical: () => void
+  onToggleOrientation?: () => void
 }
 
 const COUNTDOWN_OPTIONS: CountdownSec[] = [3, 5, 10]
@@ -77,6 +80,7 @@ export function CapturePreviewTelemetry({
   onSetRotationQuarter,
   onFlipHorizontal,
   onFlipVertical,
+  onToggleOrientation,
 }: CapturePreviewTelemetryProps) {
   const rootRef = useRef<HTMLDivElement | null>(null)
   const [openTokenId, setOpenTokenId] = useState<InteractiveTokenId | null>(null)
@@ -127,7 +131,7 @@ export function CapturePreviewTelemetry({
       label: settings.captureMode === 'photo' ? 'Photo' : 'Boomerang',
       interactive: true,
       accent: true,
-      menuLabel: 'Chọn chế độ capture',
+      menuLabel: 'Chọn chế độ camera',
       options: [
         {
           label: 'Photo',
@@ -188,7 +192,7 @@ export function CapturePreviewTelemetry({
         : {
             interactive: true,
             accent: true,
-            menuLabel: 'Chọn góc xoay preview',
+            menuLabel: 'Chọn góc xoay camera',
             options: rotationOptions.map((value) => ({
               label: `R${value * 90}`,
               selected: settings.rotationQuarter === value,
@@ -207,7 +211,7 @@ export function CapturePreviewTelemetry({
       label: `H${settings.flipHorizontal ? '1' : '0'}`,
       interactive: true,
       accent: true,
-      menuLabel: 'Lật ngang preview',
+      menuLabel: 'Lật ngang camera',
       options: [
         {
           label: 'H0',
@@ -236,7 +240,7 @@ export function CapturePreviewTelemetry({
       label: `V${settings.flipVertical ? '1' : '0'}`,
       interactive: true,
       accent: true,
-      menuLabel: 'Lật dọc preview',
+      menuLabel: 'Lật dọc camera',
       options: [
         {
           label: 'V0',
@@ -276,7 +280,7 @@ export function CapturePreviewTelemetry({
       ref={rootRef}
       className="capture-telemetry-bar"
       role="group"
-      aria-label="Capture quick settings"
+      aria-label="Camera quick settings"
     >
       {tokens.map((token, index) => {
         const isOpen = token.interactive && openTokenId === token.id
@@ -355,6 +359,25 @@ export function CapturePreviewTelemetry({
           </Fragment>
         )
       })}
+
+      {onToggleOrientation ? (
+        <span className="capture-telemetry-chip-wrap">
+          <button
+            type="button"
+            className="capture-telemetry-chip capture-telemetry-chip--interactive"
+            onClick={onToggleOrientation}
+            disabled={disabled}
+            aria-label={`Switch to ${profile === 'portrait' ? 'landscape' : 'portrait'} mode`}
+            title={`Switch to ${profile === 'portrait' ? 'landscape' : 'portrait'} mode`}
+          >
+            <span className="capture-telemetry-chip-main">
+              <Monitor size={15} className={profile === 'landscape' ? 'active' : ''} />
+              <Smartphone size={15} className={profile === 'portrait' ? 'active' : ''} />
+              <span>{profile === 'portrait' ? 'Portrait' : 'Landscape'}</span>
+            </span>
+          </button>
+        </span>
+      ) : null}
     </div>
   )
 }

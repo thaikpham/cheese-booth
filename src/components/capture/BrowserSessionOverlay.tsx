@@ -1,13 +1,9 @@
 import {
-  AlertTriangle,
   CheckCircle2,
-  CloudUpload,
   LoaderCircle,
-  QrCode,
   RefreshCw,
-  Sparkles,
 } from 'lucide-react'
-import { type ReactNode, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import * as QRCode from 'qrcode'
 
 import type { BrowserCaptureSessionState, CaptureOutcome } from '../../types'
@@ -92,8 +88,6 @@ export function BrowserSessionOverlay({
           aria-modal="true"
         >
           <OverlayHeading
-            icon={<Sparkles size={22} />}
-            kicker="Review"
             title="✨ Duyệt shot"
             description={`Ổn thì thêm vào session. Còn ${Math.max(
               0,
@@ -168,8 +162,6 @@ export function BrowserSessionOverlay({
           aria-modal="true"
         >
           <OverlayHeading
-            icon={<CloudUpload size={22} />}
-            kicker="Upload"
             title="☁️ Đang tạo QR"
             description={`Đẩy ${session.items.length} media lên gallery.`}
           />
@@ -199,8 +191,6 @@ export function BrowserSessionOverlay({
           aria-modal="true"
         >
           <OverlayHeading
-            icon={<QrCode size={22} />}
-            kicker="QR Ready"
             title="📲 QR sẵn sàng"
             description="Một mã cho toàn bộ gallery của session."
           />
@@ -263,8 +253,6 @@ export function BrowserSessionOverlay({
           aria-modal="true"
         >
           <OverlayHeading
-            icon={<AlertTriangle size={22} />}
-            kicker="Retry"
             title="⚠️ Chưa tạo được QR"
             description={
               session.share.errorMessage ??
@@ -298,25 +286,17 @@ export function BrowserSessionOverlay({
 }
 
 interface OverlayHeadingProps {
-  icon: ReactNode
-  kicker: string
   title: string
   description: string
 }
 
 function OverlayHeading({
-  icon,
-  kicker,
   title,
   description,
 }: OverlayHeadingProps) {
   return (
     <div className="browser-capture-outcome-heading">
-      <div className="browser-capture-outcome-heading-icon" aria-hidden="true">
-        {icon}
-      </div>
       <div className="browser-capture-outcome-copy">
-        <p className="browser-capture-outcome-kicker">{kicker}</p>
         <h2 className="browser-capture-outcome-title">{title}</h2>
         <p className="browser-capture-outcome-description">{description}</p>
       </div>

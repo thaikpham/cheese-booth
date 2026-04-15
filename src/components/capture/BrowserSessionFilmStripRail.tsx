@@ -1,4 +1,4 @@
-import { Play, QrCode, RefreshCw, X, GalleryVerticalEnd } from 'lucide-react'
+import { GalleryVerticalEnd } from 'lucide-react'
 
 import type { BrowserCaptureSessionState } from '../../types'
 
@@ -6,20 +6,12 @@ interface BrowserSessionFilmStripRailProps {
   session: BrowserCaptureSessionState
   layout: 'portrait' | 'landscape'
   uiDensity: 'roomy' | 'compact' | 'dense'
-  onStartBrowserSession?: () => void
-  onFinalizeBrowserSession?: () => void
-  onCancelBrowserSession?: () => void
-  onResetBrowserSession?: () => void
 }
 
 export function BrowserSessionFilmStripRail({
   session,
   layout,
   uiDensity,
-  onStartBrowserSession,
-  onFinalizeBrowserSession,
-  onCancelBrowserSession,
-  onResetBrowserSession,
 }: BrowserSessionFilmStripRailProps) {
   const slots = Array.from({ length: session.maxItems }, (_, index) => {
     const sequence = index + 1
@@ -76,60 +68,6 @@ export function BrowserSessionFilmStripRail({
             </div>
           </article>
         ))}
-      </div>
-
-      <div className="capture-session-tray-controls">
-        {session.status === 'idle' && onStartBrowserSession ? (
-          <button
-            type="button"
-            className="button primary capture-session-tray-button"
-            onClick={onStartBrowserSession}
-            aria-label="Bắt đầu session"
-          >
-            <Play size={16} />
-            Bắt đầu
-          </button>
-        ) : null}
-
-        {session.status === 'active' ? (
-          <>
-            {onFinalizeBrowserSession && (
-              <button
-                type="button"
-                className="button primary capture-session-tray-button"
-                onClick={onFinalizeBrowserSession}
-                disabled={session.items.length === 0}
-                aria-label="Kết thúc session và tạo QR"
-              >
-                <QrCode size={16} />
-                Tạo QR
-              </button>
-            )}
-            {onCancelBrowserSession && (
-              <button
-                type="button"
-                className="button secondary capture-session-tray-button"
-                onClick={onCancelBrowserSession}
-                aria-label="Hủy session hiện tại"
-              >
-                <X size={16} />
-                Hủy
-              </button>
-            )}
-          </>
-        ) : null}
-
-        {(session.status === 'ready' || session.status === 'error') && onResetBrowserSession ? (
-          <button
-            type="button"
-            className="button primary capture-session-tray-button"
-            onClick={onResetBrowserSession}
-            aria-label="Bắt đầu session mới"
-          >
-            <RefreshCw size={16} />
-            Session mới
-          </button>
-        ) : null}
       </div>
     </section>
   )

@@ -13,19 +13,29 @@
   --accent-soft: oklch(0.95 0.04 264);
   --radius: 10px;
   --shadow: 0 1px 2px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.03);
+  --sd-shell-padding: var(--layout-shell-padding);
+  --sd-gap: var(--layout-gap);
+  --sd-rail-width: clamp(84px, 8vw, 112px);
+  --sd-controls-padding: clamp(22px, 2.4vw, 32px);
+  --sd-preview-padding: clamp(20px, 2vw, 28px);
+  --sd-preview-shell-max: min(100%, 46rem);
 
-  width: 100vw;
+  width: 100%;
   min-height: 100dvh;
   display: grid;
-  grid-template-columns: 108px minmax(340px, 1fr) minmax(320px, 1.2fr);
+  grid-template-columns:
+    var(--sd-rail-width)
+    minmax(0, 1.02fr)
+    minmax(340px, min(44vw, 760px));
   background: var(--bg);
   color: var(--fg);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   font-size: 0.88rem;
+  overflow: hidden;
 }
 
 .settings-dashboard--portrait {
-  grid-template-columns: 88px minmax(0, 1fr);
+  grid-template-columns: var(--sd-rail-width) minmax(0, 1fr);
 }
 
 .sd-portrait-stack {
@@ -42,9 +52,10 @@
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  padding: 16px 0 0 0;
+  padding: max(16px, var(--safe-area-top)) 0 0;
   border-right: 1px solid var(--border);
   background: var(--card);
+  min-width: 0;
 }
 
 .sd-rail-brand {
@@ -70,6 +81,7 @@
   flex: 1;
   width: 100%;
   padding: 0 8px;
+  min-width: 0;
 }
 
 .sd-rail-item {
@@ -92,6 +104,7 @@
   transition:
     background-color 120ms ease,
     color 120ms ease;
+  min-width: 0;
 }
 
 .sd-rail-item span {
@@ -115,8 +128,8 @@
 
 .sd-floating-back {
   position: fixed; /* so it stays independently of scroll */
-  bottom: 32px;
-  left: 32px;
+  bottom: max(24px, var(--safe-area-bottom));
+  left: max(24px, var(--safe-area-left));
   z-index: 999;
   display: flex;
   align-items: center;
@@ -141,17 +154,26 @@
 /* ═══════════ CONTROLS PANEL ═══════════ */
 
 .sd-controls {
-  padding: 28px 28px 28px 32px;
+  min-width: 0;
+  padding: var(--sd-controls-padding);
   overflow-y: auto;
   border-right: 1px solid var(--border);
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
 
+.sd-controls > * {
+  width: min(100%, 48rem);
+}
+
 .sd-controls--portrait {
   border-right: none;
   border-top: 1px solid var(--border);
   padding: 24px 24px 32px;
+}
+
+.sd-controls--portrait > * {
+  width: min(100%, 56rem);
 }
 
 .sd-controls::-webkit-scrollbar {
@@ -455,7 +477,7 @@
   border-radius: 999px;
   background: rgba(227, 82, 5, 0.12);
   color: #a8430d;
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -520,7 +542,7 @@
   border-radius: 16px;
   border: 1px solid rgba(16, 19, 34, 0.1);
   text-decoration: none;
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.74rem;
   font-weight: 700;
 }
@@ -554,7 +576,7 @@
   align-items: center;
   gap: 8px;
   color: rgba(16, 19, 34, 0.62);
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -768,7 +790,7 @@
 }
 
 .sd-kv-value--mono {
-  font-family: 'Red Hat Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.82rem;
   word-break: break-all;
 }
@@ -929,6 +951,7 @@
 .sd-chip-row {
   display: flex;
   gap: 6px;
+  flex-wrap: wrap;
 }
 
 .sd-chip {
@@ -1012,6 +1035,7 @@ select.sd-input {
 .sd-input-group {
   display: flex;
   gap: 0;
+  min-width: 0;
 }
 
 .sd-input-group .sd-input {
@@ -1153,7 +1177,12 @@ select.sd-input {
   display: flex;
   height: 100dvh;
   max-height: 100dvh;
-  padding: 24px 24px 20px;
+  min-width: 0;
+  padding:
+    max(var(--sd-preview-padding), var(--safe-area-top))
+    max(var(--sd-preview-padding), var(--safe-area-right))
+    max(var(--sd-preview-padding), var(--safe-area-bottom))
+    var(--sd-preview-padding);
   overflow-y: auto;
   background:
     linear-gradient(180deg, var(--muted) 0%, var(--bg) 100%);
@@ -1165,6 +1194,9 @@ select.sd-input {
   flex-direction: column;
   gap: 14px;
   min-height: 0;
+  width: var(--sd-preview-shell-max);
+  max-width: 100%;
+  margin: 0 auto;
 }
 
 .sd-preview-header {
@@ -1234,7 +1266,7 @@ select.sd-input {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: min(100%, 720px);
+  width: min(100%, 100%);
   min-height: 0;
   padding: clamp(10px, 1vw, 14px);
   border: 1px solid rgba(255, 255, 255, 0.75);
@@ -1341,7 +1373,7 @@ select.sd-input {
 
 .sd-preview-toolbar {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 10px;
 }
 
@@ -1482,133 +1514,9 @@ select.sd-input {
 }
 
 /* ═══════════ RESPONSIVE ═══════════ */
-
-@media (max-width: 1100px) {
-  .settings-dashboard {
-    grid-template-columns: 64px minmax(280px, 1fr) minmax(260px, 1fr);
-  }
-
-  .sd-rail-item span {
-    display: none;
-  }
-
-  .sd-rail-item {
-    height: 44px;
-  }
-
-  .sd-install-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .release-download-card-head {
-    flex-direction: column;
-  }
-
-  .release-download-card-badge {
-    align-self: flex-start;
-  }
-}
-
-@media (max-width: 860px), (orientation: portrait) {
-  .settings-dashboard {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr auto;
-  }
-
-  .sd-rail {
-    flex-direction: row;
-    padding: 8px 12px;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-    overflow-x: auto;
-  }
-
-  .sd-rail-brand {
-    padding-bottom: 0;
-    margin-bottom: 0;
-    border-bottom: none;
-    width: auto;
-  }
-
-  .sd-rail-nav {
-    flex-direction: row;
-    gap: 4px;
-    padding: 0;
-  }
-
-  .sd-rail-item {
-    flex-direction: row;
-    height: 36px;
-    padding: 0 10px;
-    gap: 6px;
-    white-space: nowrap;
-  }
-
-  .sd-rail-item span {
-    display: inline;
-    font-size: 0.76rem;
-  }
-
-  .sd-controls {
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .sd-preview {
-    position: static;
-    align-self: stretch;
-    height: auto;
-    max-height: 50vh;
-  }
-
-  .sd-install-section-head,
-  .sd-install-card-head,
-  .sd-release-banner,
-  .sd-runtime-banner {
-    flex-direction: column;
-  }
-
-  .sd-install-section-copy {
-    max-width: none;
-    text-align: left;
-  }
-
-  .sd-install-section-actions {
-    width: 100%;
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .sd-download-panel .sd-install-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
 /* =============================================
    Responsive Layout Pass
    ============================================= */
-
-.settings-dashboard {
-  --sd-shell-padding: var(--viewport-shell-padding);
-  --sd-gap: var(--viewport-gap);
-  width: 100%;
-  min-height: 100svh;
-  min-height: 100dvh;
-  overflow: hidden;
-  grid-template-columns:
-    minmax(82px, 108px)
-    minmax(0, 1.02fr)
-    minmax(320px, 0.92fr);
-}
-
-.sd-rail {
-  padding-top: max(16px, var(--safe-area-top));
-}
-
-.sd-controls {
-  min-width: 0;
-  padding: clamp(20px, 2.4vw, 32px);
-}
 
 .sd-install-grid {
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -1618,57 +1526,17 @@ select.sd-input {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
-.sd-preview {
-  top: 0;
-  min-width: 0;
-  height: 100svh;
-  max-height: 100dvh;
-  padding:
-    max(20px, var(--safe-area-top))
-    max(20px, var(--safe-area-right))
-    max(20px, var(--safe-area-bottom))
-    20px;
-}
-
-.sd-preview-stage {
-  flex: 1 1 auto;
-}
-
-.sd-preview-stage-shell {
-  width: min(100%, 680px);
-}
-
-.sd-floating-back {
-  left: max(24px, var(--safe-area-left));
-  bottom: max(24px, var(--safe-area-bottom));
-}
-
-@media (min-aspect-ratio: 2.15/1) {
+@media (min-width: 1680px) {
   .settings-dashboard {
+    --sd-rail-width: clamp(92px, 7vw, 116px);
     grid-template-columns:
-      minmax(88px, 104px)
+      var(--sd-rail-width)
       minmax(420px, 0.9fr)
-      minmax(620px, 1.12fr);
+      minmax(620px, min(46vw, 880px));
   }
 
-  .sd-controls {
-    padding: clamp(22px, 2vw, 30px);
-  }
-
-  .sd-preview {
-    padding:
-      max(20px, var(--safe-area-top))
-      max(24px, var(--safe-area-right))
-      max(20px, var(--safe-area-bottom))
-      24px;
-  }
-
-  .sd-preview-stage-shell {
-    width: min(100%, 860px);
-  }
-
-  .sd-preview-stage-shell.is-landscape {
-    max-width: 860px;
+  .sd-preview-shell {
+    width: min(100%, 52rem);
   }
 
   .sd-preview-stage-shell.is-landscape .preview-frame {
@@ -1684,84 +1552,13 @@ select.sd-input {
   }
 }
 
-@media (max-aspect-ratio: 10/19) {
-  .settings-dashboard--portrait {
-    grid-template-columns: 76px minmax(0, 1fr);
-  }
-
-  .settings-dashboard--portrait .sd-rail {
-    padding-top: max(14px, var(--safe-area-top));
-  }
-
-  .settings-dashboard--portrait .sd-rail-item {
-    height: 48px;
-  }
-
-  .settings-dashboard--portrait .sd-rail-item span {
-    display: none;
-  }
-
-  .settings-dashboard--portrait .sd-preview--portrait {
-    padding:
-      max(18px, var(--safe-area-top))
-      max(18px, var(--safe-area-right))
-      18px
-      18px;
-  }
-
-  .settings-dashboard--portrait .sd-preview--portrait .sd-preview-shell {
-    gap: 14px;
-  }
-
-  .settings-dashboard--portrait .sd-preview--portrait .sd-preview-header {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .settings-dashboard--portrait .sd-preview--portrait .sd-preview-stage-shell {
-    width: min(100%, 680px);
-    padding: 12px;
-    border-radius: 28px;
-  }
-
-  .settings-dashboard--portrait .sd-preview--portrait .sd-preview-stage-shell.is-portrait {
-    max-width: 680px;
-  }
-
-  .settings-dashboard--portrait .sd-preview--portrait .sd-preview-stage-shell.is-portrait .preview-frame {
-    width: min(100%, 620px);
-    max-width: 620px;
-    max-height: min(76svh, 1240px);
-  }
-
-  .settings-dashboard--portrait .sd-preview-toolbar {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .settings-dashboard--portrait .sd-controls--portrait {
-    padding: 20px 20px 28px;
-  }
-}
-
-@media (min-aspect-ratio: 2/1) {
+@media (max-width: 1279px) {
   .settings-dashboard {
+    --sd-rail-width: clamp(72px, 7vw, 88px);
     grid-template-columns:
-      minmax(88px, 104px)
+      var(--sd-rail-width)
       minmax(0, 1fr)
-      minmax(360px, 0.94fr);
-  }
-
-  .sd-preview-stage-shell {
-    width: min(100%, 740px);
-  }
-}
-
-@media (max-aspect-ratio: 154/100) {
-  .settings-dashboard {
-    grid-template-columns:
-      minmax(68px, 80px)
-      minmax(0, 1fr)
-      minmax(280px, 0.82fr);
+      minmax(300px, min(38vw, 420px));
   }
 
   .sd-rail-item span {
@@ -1769,7 +1566,45 @@ select.sd-input {
   }
 
   .sd-rail-item {
-    height: 44px;
+    height: 48px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .settings-dashboard:not(.settings-dashboard--portrait) {
+    grid-template-columns: var(--sd-rail-width) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .settings-dashboard:not(.settings-dashboard--portrait) .sd-rail {
+    grid-row: 1 / span 2;
+  }
+
+  .settings-dashboard:not(.settings-dashboard--portrait) .sd-controls {
+    grid-column: 2;
+    grid-row: 1;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .settings-dashboard:not(.settings-dashboard--portrait) .sd-preview {
+    position: static;
+    grid-column: 2;
+    grid-row: 2;
+    height: auto;
+    max-height: none;
+    border-top: 1px solid var(--border);
+  }
+
+  .settings-dashboard:not(.settings-dashboard--portrait) .sd-preview-shell {
+    width: min(100%, 56rem);
+  }
+}
+
+@media (max-width: 1023px) {
+  .settings-dashboard {
+    --sd-controls-padding: clamp(18px, 2.4vw, 24px);
+    --sd-preview-padding: clamp(18px, 2.4vw, 24px);
   }
 
   .sd-install-grid,
@@ -1790,25 +1625,41 @@ select.sd-input {
     border-bottom: none;
   }
 
-  .sd-preview {
-    padding-left: 18px;
+  .sd-install-section-head,
+  .sd-install-card-head,
+  .sd-release-banner,
+  .sd-runtime-banner,
+  .release-download-card-head {
+    flex-direction: column;
+  }
+
+  .sd-release-banner,
+  .sd-runtime-banner,
+  .sd-install-section-actions {
+    align-items: stretch;
   }
 }
 
-@media (max-aspect-ratio: 11/10), (max-height: 760px) {
-  .settings-dashboard {
+@media (max-width: 767px), (max-height: 760px) {
+  .settings-dashboard,
+  .settings-dashboard--portrait {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto;
     overflow: auto;
   }
 
+  .sd-portrait-stack {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
   .sd-rail {
     flex-direction: row;
     justify-content: flex-start;
+    gap: 10px;
     padding:
-      max(8px, var(--safe-area-top))
+      max(10px, var(--safe-area-top))
       12px
-      8px;
+      10px;
     border-right: none;
     border-bottom: 1px solid var(--border);
     overflow-x: auto;
@@ -1823,15 +1674,17 @@ select.sd-input {
 
   .sd-rail-nav {
     flex-direction: row;
-    gap: 4px;
+    gap: 6px;
+    width: max-content;
+    min-width: max-content;
     padding: 0;
   }
 
   .sd-rail-item {
     flex-direction: row;
     gap: 6px;
-    height: 38px;
-    padding: 0 10px;
+    height: 40px;
+    padding: 0 12px;
     white-space: nowrap;
   }
 
@@ -1840,15 +1693,8 @@ select.sd-input {
     font-size: 0.74rem;
   }
 
-  .sd-controls {
-    order: 3;
-    padding: 18px;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-    overflow: visible;
-  }
-
-  .sd-preview {
+  .sd-preview,
+  .sd-preview--portrait {
     position: static;
     order: 2;
     height: auto;
@@ -1857,38 +1703,29 @@ select.sd-input {
     border-bottom: 1px solid var(--border);
   }
 
-  .sd-preview-shell {
-    gap: 12px;
-  }
-
-  .settings-dashboard--portrait {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
-  }
-
-  .settings-dashboard--portrait .sd-portrait-stack {
-    grid-template-rows: auto minmax(0, 1fr);
-  }
-
-  .settings-dashboard--portrait .sd-preview--portrait {
+  .sd-controls,
+  .sd-controls--portrait {
+    order: 3;
+    width: 100%;
     padding: 18px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .settings-dashboard--portrait .sd-controls--portrait {
-    padding: 18px;
-    border-top: 1px solid var(--border);
+    border-right: none;
+    border-top: none;
     border-bottom: none;
     overflow: visible;
   }
 
-  .settings-dashboard--portrait .sd-preview--portrait .sd-preview-stage-shell.is-portrait {
-    width: min(100%, 560px);
+  .sd-controls > *,
+  .sd-controls--portrait > * {
+    width: 100%;
   }
 
   .sd-preview-header {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .sd-preview-compact-meta {
+    justify-content: flex-start;
   }
 
   .sd-preview-stage {
@@ -1916,17 +1753,80 @@ select.sd-input {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .sd-install-section-head,
-  .sd-install-card-head,
-  .sd-release-banner,
-  .sd-runtime-banner,
-  .release-download-card-head {
-    flex-direction: column;
+  .sd-preview-chip--wide {
+    grid-column: 1 / -1;
+  }
+
+  .sd-install-section-copy {
+    max-width: none;
+  }
+
+  .sd-install-section-actions,
+  .sd-btn-row {
+    width: 100%;
   }
 
   .sd-floating-back {
     left: auto;
     right: max(18px, var(--safe-area-right));
     bottom: max(18px, var(--safe-area-bottom));
+  }
+}
+
+@media (max-width: 520px) {
+  .sd-controls,
+  .sd-controls--portrait,
+  .sd-preview,
+  .sd-preview--portrait {
+    padding: 16px;
+  }
+
+  .sd-rail-item {
+    height: 38px;
+    padding: 0 10px;
+  }
+
+  .sd-rail-item span {
+    font-size: 0.7rem;
+  }
+
+  .sd-preview-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .sd-preview-chip--wide {
+    grid-column: auto;
+  }
+
+  .sd-input-group {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .sd-input-group .sd-input {
+    border-radius: var(--radius);
+    border-right: 1px solid var(--border);
+  }
+
+  .sd-input-addon {
+    width: 100%;
+    height: 40px;
+    border-left: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  .sd-floating-back {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+@media (max-height: 480px) and (orientation: landscape) {
+  .sd-rail-item {
+    height: 36px;
+  }
+
+  .sd-preview-stage-shell.is-landscape .preview-frame {
+    max-height: min(44svh, 320px);
   }
 }

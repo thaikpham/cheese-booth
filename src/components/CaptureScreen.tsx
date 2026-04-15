@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { CSSProperties, RefObject } from 'react'
-import { CircleDot, GalleryVerticalEnd } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import cheeseLogo from '../../cheese_icon_transparent.svg'
 
 import {
+  getCaptureRoute,
   getKioskPreviewAspect,
   getSettingsRoute,
 } from '../lib/kioskProfiles'
@@ -19,6 +19,7 @@ import type {
   StreamState,
 } from '../types'
 import { APP_NAME } from '../lib/branding'
+import { resolveBrowserDeviceKind } from '../lib/browserDevice'
 import { BrowserSessionFilmStripRail } from './capture/BrowserSessionFilmStripRail'
 import { BrowserSessionOverlay } from './capture/BrowserSessionOverlay'
 import { CapturePreview } from './capture/CapturePreview'
@@ -100,7 +101,6 @@ export function CaptureScreen({
   const previewAspect = getKioskPreviewAspect(profile)
   const captureModeLabel =
     settings.captureMode === 'photo' ? 'Photo' : 'Boomerang'
-  const sessionCountLabel = `${browserSession.items.length}/${browserSession.maxItems}`
   const sourceUnavailable = streamState === 'missing-device' || sources.length === 0
   const sessionShutterLocked =
     browserSession.status !== 'active' ||
@@ -110,12 +110,6 @@ export function CaptureScreen({
     permissionState !== 'granted' ||
     streamState !== 'live' ||
     sessionShutterLocked
-  const cameraStatus = getCameraStatusBadge(
-    permissionState,
-    streamState,
-    sourceUnavailable,
-  )
-
   useEffect(() => {
     if (typeof window === 'undefined') {
       return
@@ -123,7 +117,7 @@ export function CaptureScreen({
 
     const updateViewportContext = () => {
       setUiDensity(resolveUiDensity(layout, window.innerWidth, window.innerHeight))
-      setDeviceKind(resolveBrowserDeviceKind(window))
+      setDeviceKind(resolveBrowserDeviceKind(window, navigator))
     }
 
     updateViewportContext()
@@ -133,6 +127,11 @@ export function CaptureScreen({
       window.removeEventListener('resize', updateViewportContext)
     }
   }, [layout])
+
+  const handleOrientationToggle = () => {
+    const newProfile: KioskProfile = profile === 'portrait' ? 'landscape' : 'portrait'
+    navigate(getCaptureRoute(newProfile))
+  }
 
   const header = (
     <header className="capture-shell-header">
@@ -151,23 +150,6 @@ export function CaptureScreen({
           <span className="capture-brand-note">Capture Console</span>
         </span>
       </Link>
-      <div className="capture-header-pills capture-header-pills--hidden" aria-label="Capture status">
-        <span
-          className={[
-            'capture-header-pill',
-            `capture-header-pill--${cameraStatus.tone}`,
-          ].join(' ')}
-        >
-          <CircleDot size={14} />
-          <span aria-hidden="true">{cameraStatus.emoji}</span>
-          <span>{cameraStatus.label}</span>
-        </span>
-        <span className="capture-header-pill capture-header-pill--neutral">
-          <GalleryVerticalEnd size={14} />
-          <span aria-hidden="true">🎞</span>
-          <span>{sessionCountLabel}</span>
-        </span>
-      </div>
     </header>
   )
 
@@ -181,16 +163,13 @@ export function CaptureScreen({
           <CapturePreviewTelemetry
             profile={profile}
             settings={settings}
-            disabled={
-              isBusy ||
-              countdownValue !== null ||
-              browserSession.status !== 'active'
-            }
+            disabled={isBusy || countdownValue !== null}
             onModeChange={onModeChange}
             onCountdownChange={onCountdownChange}
             onSetRotationQuarter={onSetRotationQuarter}
             onFlipHorizontal={onFlipHorizontal}
             onFlipVertical={onFlipVertical}
+            onToggleOrientation={handleOrientationToggle}
           />
         </div>
 
@@ -216,16 +195,13 @@ export function CaptureScreen({
       <CapturePreviewTelemetry
         profile={profile}
         settings={settings}
-        disabled={
-          isBusy ||
-          countdownValue !== null ||
-          browserSession.status !== 'active'
-        }
+        disabled={isBusy || countdownValue !== null}
         onModeChange={onModeChange}
         onCountdownChange={onCountdownChange}
         onSetRotationQuarter={onSetRotationQuarter}
         onFlipHorizontal={onFlipHorizontal}
         onFlipVertical={onFlipVertical}
+        onToggleOrientation={handleOrientationToggle}
       />
     </div>
   )
@@ -262,6 +238,11 @@ export function CaptureScreen({
       shutterDisabled={shutterDisabled}
       onOpenSettings={() => navigate(getSettingsRoute(profile))}
       onShutter={onShutter}
+      onStartBrowserSession={onStartBrowserSession}
+      onFinalizeBrowserSession={onFinalizeBrowserSession}
+      onRetryBrowserSessionShare={onRetryBrowserSessionShare}
+      onCancelBrowserSession={onCancelBrowserSession}
+      onResetBrowserSession={onResetBrowserSession}
     />
   )
 
@@ -270,10 +251,6 @@ export function CaptureScreen({
       session={browserSession}
       layout={layout}
       uiDensity={uiDensity}
-      onStartBrowserSession={onStartBrowserSession}
-      onFinalizeBrowserSession={onFinalizeBrowserSession}
-      onCancelBrowserSession={onCancelBrowserSession}
-      onResetBrowserSession={onResetBrowserSession}
     />
   )
 
@@ -302,9 +279,9 @@ export function CaptureScreen({
             className={`capture-shell capture-shell--landscape is-${uiDensity} device-${deviceKind}`}
             data-device={deviceKind}
           >
-            {header}
             {stage}
             <div className="capture-support-region capture-support-region--landscape">
+              {header}
               {sessionTray}
               {controlDock}
             </div>
@@ -322,54 +299,6 @@ export function CaptureScreen({
       />
     </section>
   )
-}
-
-function getCameraStatusBadge(
-  permissionState: PermissionState,
-  streamState: StreamState,
-  sourceUnavailable: boolean,
-): {
-  emoji: string
-  label: string
-  tone: 'live' | 'warn' | 'danger' | 'neutral'
-} {
-  if (streamState === 'live') {
-    return {
-      emoji: '🟢',
-      label: 'Live',
-      tone: 'live',
-    }
-  }
-
-  if (permissionState !== 'granted') {
-    return {
-      emoji: '🔒',
-      label: 'Quyền camera',
-      tone: 'warn',
-    }
-  }
-
-  if (sourceUnavailable || streamState === 'missing-device') {
-    return {
-      emoji: '📡',
-      label: 'Chưa thấy nguồn',
-      tone: 'warn',
-    }
-  }
-
-  if (streamState === 'starting') {
-    return {
-      emoji: '⏳',
-      label: 'Đang mở camera',
-      tone: 'neutral',
-    }
-  }
-
-  return {
-    emoji: '⚠️',
-    label: 'Kiểm tra camera',
-    tone: 'danger',
-  }
 }
 
 function resolveUiDensity(
@@ -403,24 +332,3 @@ function resolveUiDensity(
 
   return 'roomy'
 }
-
-function resolveBrowserDeviceKind(currentWindow: Window): BrowserDeviceKind {
-  const hasTouchPoints = navigator.maxTouchPoints > 0
-  const coarsePointer = currentWindow.matchMedia('(pointer: coarse)').matches
-  const narrowViewport = currentWindow.innerWidth <= 900
-  const userAgentData = (
-    navigator as Navigator & {
-      userAgentData?: { mobile?: boolean }
-    }
-  ).userAgentData
-  const ua =
-    userAgentData?.mobile ??
-    /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(navigator.userAgent)
-
-  if ((hasTouchPoints && coarsePointer) || ua || (coarsePointer && narrowViewport)) {
-    return 'mobile'
-  }
-
-  return 'desktop'
-}
-

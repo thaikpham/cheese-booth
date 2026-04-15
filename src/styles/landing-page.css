@@ -1,13 +1,21 @@
 .landing-page {
-  --landing-shell-padding: clamp(24px, 4vw, 56px);
+  --landing-shell-padding: var(--layout-shell-padding);
   --landing-logo-size: clamp(220px, 24vw, 420px);
+  --landing-content-max: min(100%, 1480px);
+  --landing-copy-max: min(100%, 62rem);
+  --landing-glow-size: min(68vw, 560px);
   position: relative;
   display: grid;
   place-items: center;
   place-content: center;
   width: 100%;
-  height: 100vh;
-  padding: 0;
+  min-height: 100svh;
+  min-height: 100dvh;
+  padding:
+    max(var(--landing-shell-padding), var(--safe-area-top))
+    max(var(--landing-shell-padding), var(--safe-area-right))
+    max(var(--landing-shell-padding), var(--safe-area-bottom))
+    max(var(--landing-shell-padding), var(--safe-area-left));
   overflow: hidden;
   isolation: isolate;
   background:
@@ -52,7 +60,8 @@
   align-items: center;
   place-content: center;
   gap: clamp(24px, 4vh, 48px);
-  width: min(100%, 1480px);
+  width: var(--landing-content-max);
+  min-width: 0;
 }
 
 .landing-cheese-container {
@@ -71,8 +80,8 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: min(68vw, 560px);
-  height: min(68vw, 560px);
+  width: var(--landing-glow-size);
+  height: var(--landing-glow-size);
   background:
     radial-gradient(
       circle,
@@ -105,14 +114,15 @@
   align-items: center;
   place-content: center;
   gap: clamp(12px, 2vh, 22px);
-  width: min(100%, 72rem);
+  width: min(100%, var(--layout-reading-max));
+  min-width: 0;
   text-align: center;
 }
 
 .landing-title {
   margin: 0;
   color: #fff;
-  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-family: var(--font-display);
   font-size: clamp(2.8rem, 7.5vw, 6rem);
   font-weight: 700;
   letter-spacing: clamp(0.08em, 0.7vw, 0.18em);
@@ -124,11 +134,11 @@
 .landing-subtitle {
   display: grid;
   gap: 8px;
-  width: min(100%, 62rem);
+  width: var(--landing-copy-max);
   margin: 0 auto;
   justify-self: center;
   color: rgba(255, 255, 255, 0.68);
-  font-family: 'IBM Plex Mono', 'Red Hat Mono', monospace;
+  font-family: var(--font-mono);
   font-size: clamp(0.92rem, 1.8vw, 1.18rem);
   font-weight: 500;
   letter-spacing: 0.04em;
@@ -268,40 +278,34 @@
   }
 }
 
-@media (min-aspect-ratio: 155/100) and (min-height: 761px) {
+@media (min-width: 1024px) and (min-height: 761px) {
   .landing-subtitle .line1,
   .landing-subtitle .line2,
   .landing-subtitle .line3 {
     white-space: nowrap;
     overflow: hidden;
-    border-right: 3px solid rgba(255, 255, 255, 0.8);
+    border-right: 0;
     width: 0;
     margin: 0 auto;
   }
 
   .landing-subtitle .line1 {
-    animation:
-      typing-line1 0.47s steps(30, end) 0.2s forwards,
-      blink-caret 0.27s step-end 0.2s 2;
+    animation: typing-line1 0.47s steps(30, end) 0.2s forwards;
   }
 
   .landing-subtitle .line2 {
-    animation:
-      typing-line2 0.4s steps(36, end) 0.73s forwards,
-      blink-caret 0.27s step-end 0.73s 2;
+    animation: typing-line2 0.4s steps(36, end) 0.73s forwards;
   }
 
   .landing-subtitle .line3 {
-    animation:
-      typing-line3 0.34s steps(26, end) 1.2s forwards,
-      blink-caret 0.27s step-end 1.2s infinite;
+    animation: typing-line3 0.34s steps(26, end) 1.2s forwards;
   }
 }
 
-@media (min-aspect-ratio: 2/1) {
+@media (min-width: 1680px) {
   .landing-page {
-    --landing-shell-padding: clamp(20px, 2.8vw, 48px);
-    --landing-logo-size: clamp(220px, 20vw, 400px);
+    --landing-logo-size: clamp(240px, 18vw, 420px);
+    --landing-glow-size: min(54vw, 620px);
   }
 
   .landing-hero-content {
@@ -309,10 +313,10 @@
   }
 }
 
-@media (max-aspect-ratio: 11/10) {
+@media (max-width: 1023px) {
   .landing-page {
-    --landing-shell-padding: clamp(18px, 5vw, 24px);
-    --landing-logo-size: min(76vw, 320px);
+    --landing-logo-size: min(68vw, 360px);
+    --landing-copy-max: min(100%, 40rem);
   }
 
   .landing-page::before {
@@ -330,32 +334,97 @@
   }
 
   .landing-cheese-svg {
-    max-height: min(34svh, 300px);
+    max-height: min(34svh, 320px);
   }
 
   .landing-title {
-    font-size: clamp(2.4rem, 11vw, 4rem);
+    font-size: clamp(2.6rem, 9vw, 4.2rem);
+    letter-spacing: clamp(0.06em, 0.65vw, 0.12em);
+  }
+}
+
+@media (max-width: 767px) {
+  .landing-page {
+    --landing-logo-size: min(76vw, 320px);
+    --landing-copy-max: 100%;
+    align-content: center;
+  }
+
+  .landing-hero-content {
+    gap: clamp(18px, 3.2vh, 28px);
+  }
+
+  .landing-text-content {
+    gap: 12px;
+  }
+
+  .landing-subtitle {
+    font-size: clamp(0.88rem, 3.4vw, 1rem);
+    letter-spacing: 0.03em;
+  }
+}
+
+@media (max-width: 520px) {
+  .landing-page::before {
+    top: 6%;
+    left: -14%;
+    width: min(56vw, 220px);
+    height: min(56vw, 220px);
+  }
+
+  .landing-page::after {
+    right: -18%;
+    bottom: 8%;
+    width: min(50vw, 180px);
+    height: min(50vw, 180px);
+  }
+
+  .landing-title {
+    font-size: clamp(2.3rem, 12vw, 3.4rem);
+  }
+
+  .landing-cheese-svg {
+    max-height: min(30svh, 260px);
   }
 }
 
 @media (max-height: 760px) {
   .landing-page {
-    --landing-shell-padding: 18px;
     --landing-logo-size: clamp(190px, 20vw, 300px);
+    --landing-glow-size: min(54vw, 420px);
   }
 
   .landing-hero-content {
     gap: 18px;
   }
 
-  .landing-backlight {
-    width: min(54vw, 420px);
-    height: min(54vw, 420px);
-  }
-
   .landing-cheese-svg {
     max-height: min(30svh, 260px);
     animation-duration: 3s;
     animation-name: bouncy-loop-compact;
+  }
+}
+
+@media (max-height: 480px) and (orientation: landscape) {
+  .landing-page {
+    place-items: stretch center;
+  }
+
+  .landing-hero-content {
+    align-content: center;
+    gap: 14px;
+  }
+
+  .landing-title {
+    font-size: clamp(2rem, 6vw, 3rem);
+  }
+
+  .landing-subtitle {
+    gap: 4px;
+    font-size: 0.82rem;
+  }
+
+  .landing-cheese-svg {
+    max-height: min(42svh, 220px);
   }
 }

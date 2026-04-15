@@ -2,7 +2,7 @@ import './index.css'
 
 import cheeseLogo from '../cheese_icon_transparent.svg'
 import { matchPath, Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 import { CaptureScreen } from './components/CaptureScreen'
 import { LandingPage } from './components/LandingPage'
@@ -12,6 +12,7 @@ import { useKioskBootstrap } from './hooks/useKioskBootstrap'
 import { useKioskController } from './hooks/useKioskController'
 import { useKioskFullscreen } from './hooks/useKioskFullscreen'
 import { APP_NAME, APP_SUBTITLE } from './lib/branding'
+import { resolveDefaultKioskProfile } from './lib/browserDevice'
 import {
   DEFAULT_KIOSK_PROFILE,
   getCaptureRoute,
@@ -20,43 +21,40 @@ import {
 } from './lib/kioskProfiles'
 import type { KioskProfile } from './types'
 
-function useOrientationControl() {
-  useEffect(() => {
-    const setOrientation = () => {
-      const isMobile = window.innerWidth <= 768 || /Mobi|Android/i.test(navigator.userAgent)
-      
-      const orientation = screen.orientation as ScreenOrientation & { lock?: (orientation: string) => Promise<void> }
-      
-      if (orientation && orientation.lock) {
-        try {
-          if (isMobile) {
-            orientation.lock('portrait-primary').catch((err) => {
-              console.warn('Could not lock orientation to portrait:', err)
-            })
-          } else {
-            orientation.lock('landscape-primary').catch((err) => {
-              console.warn('Could not lock orientation to landscape:', err)
-            })
-          }
-        } catch (err) {
-          console.warn('Orientation lock not supported:', err)
-        }
-      }
+function useDeviceBasedProfile(): KioskProfile {
+  const [profile, setProfile] = useState<KioskProfile>(() => {
+    if (typeof window === 'undefined') {
+      return DEFAULT_KIOSK_PROFILE
     }
 
-    setOrientation()
+    return resolveDefaultKioskProfile(window, navigator)
+  })
 
-    window.addEventListener('resize', setOrientation)
-    return () => window.removeEventListener('resize', setOrientation)
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const detectDevice = () => {
+      setProfile(resolveDefaultKioskProfile(window, navigator))
+    }
+
+    detectDevice()
+    window.addEventListener('resize', detectDevice)
+    return () => window.removeEventListener('resize', detectDevice)
   }, [])
+
+  return profile
 }
 
 const SESSION_GALLERY_ROUTE = '/session/:token'
 
 function ProfiledKioskExperience({
   profile,
+  defaultProfile,
 }: {
   profile: KioskProfile
+  defaultProfile: KioskProfile
 }) {
   const {
     settings,
@@ -191,15 +189,15 @@ function ProfiledKioskExperience({
         />
         <Route
           path="/capture"
-          element={<Navigate to={getCaptureRoute(DEFAULT_KIOSK_PROFILE)} replace />}
+          element={<Navigate to={getCaptureRoute(defaultProfile)} replace />}
         />
         <Route
           path="/settings"
-          element={<Navigate to={getSettingsRoute(DEFAULT_KIOSK_PROFILE)} replace />}
+          element={<Navigate to={getSettingsRoute(defaultProfile)} replace />}
         />
         <Route
           path="*"
-          element={<Navigate to={getCaptureRoute(DEFAULT_KIOSK_PROFILE)} replace />}
+          element={<Navigate to={getCaptureRoute(defaultProfile)} replace />}
         />
       </Routes>
 
@@ -208,7 +206,7 @@ function ProfiledKioskExperience({
   )
 }
 
-function KioskShell() {
+function KioskShell({ defaultProfile }: { defaultProfile: KioskProfile }) {
   const location = useLocation()
   const captureMatch = matchPath('/capture/:profile', location.pathname)
   const settingsMatch = matchPath('/settings/:profile', location.pathname)
@@ -216,18 +214,24 @@ function KioskShell() {
     captureMatch?.params.profile ?? settingsMatch?.params.profile ?? null
 
   if (profileParam && !isKioskProfile(profileParam)) {
-    return <Navigate to={getCaptureRoute(DEFAULT_KIOSK_PROFILE)} replace />
+    return <Navigate to={getCaptureRoute(defaultProfile)} replace />
   }
 
   const profile: KioskProfile = isKioskProfile(profileParam)
     ? profileParam
-    : DEFAULT_KIOSK_PROFILE
+    : defaultProfile
 
-  return <ProfiledKioskExperience key={profile} profile={profile} />
+  return (
+    <ProfiledKioskExperience
+      key={profile}
+      profile={profile}
+      defaultProfile={defaultProfile}
+    />
+  )
 }
 
 function App() {
-  useOrientationControl()
+  const deviceProfile = useDeviceBasedProfile()
 
   return (
     <Routes>
@@ -235,7 +239,7 @@ function App() {
         path="/"
         element={
           <div className="route-shell route-shell--public-scroll">
-            <LandingPage />
+            <LandingPage defaultProfile={deviceProfile} />
           </div>
         }
       />
@@ -251,7 +255,7 @@ function App() {
         path="*"
         element={
           <main className="route-shell route-shell--kiosk-fit app-shell">
-            <KioskShell />
+            <KioskShell defaultProfile={deviceProfile} />
           </main>
         }
       />

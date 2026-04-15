@@ -183,7 +183,7 @@
   margin: 0 auto;
   max-width: 24rem;
   color: rgba(211, 230, 255, 0.76);
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: var(--font-mono);
   line-height: 1.7;
 }
 
@@ -401,7 +401,7 @@
   background: rgba(12, 24, 44, 0.94);
   color: #eff9ff;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.8rem;
 }
 
