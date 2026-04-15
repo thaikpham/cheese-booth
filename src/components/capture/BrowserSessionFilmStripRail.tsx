@@ -70,19 +70,6 @@ export function BrowserSessionFilmStripRail({
                 </div>
               )}
             </div>
-
-            <div className="capture-session-card-copy">
-              <span className="capture-session-card-sequence">
-                #{String(slot.sequence).padStart(2, '0')}
-              </span>
-              <span className="capture-session-card-kind">
-                {slot.item
-                  ? slot.item.kind === 'photo'
-                    ? '📷 Photo'
-                    : '🎞 Boomerang'
-                  : '○ Trống'}
-              </span>
-            </div>
           </article>
         ))}
       </div>

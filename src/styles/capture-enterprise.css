@@ -130,8 +130,6 @@
 .capture-session-status-pill,
 .capture-session-tray-title,
 .capture-session-tray-count,
-.capture-session-card-sequence,
-.capture-session-card-kind,
 .capture-dock-status-count,
 .capture-dock-status-label,
 .capture-dock-button-label,
@@ -220,6 +218,43 @@
 .capture-stage-meta--portrait,
 .capture-shell--portrait .capture-telemetry-bar {
   justify-content: flex-start;
+}
+
+.capture-stage-meta--portrait {
+  margin-bottom: -2px;
+}
+
+.capture-stage-meta--portrait .capture-telemetry-bar {
+  gap: 6px;
+}
+
+.capture-stage-meta--portrait .capture-telemetry-chip {
+  min-height: 42px;
+  padding: 0 12px;
+  border-radius: 16px;
+  font-size: 0.72rem;
+}
+
+.capture-stage-meta--portrait .capture-telemetry-chip-main {
+  gap: 6px;
+}
+
+.capture-stage-meta--portrait .capture-telemetry-separator {
+  font-size: 0.72rem;
+}
+
+.capture-stage-meta--portrait .capture-telemetry-menu {
+  top: calc(100% + 6px);
+  min-width: 124px;
+  padding: 8px;
+  border-radius: 16px;
+}
+
+.capture-stage-meta--portrait .capture-telemetry-option {
+  min-height: 38px;
+  padding: 0 10px;
+  border-radius: 12px;
+  font-size: 0.72rem;
 }
 
 .capture-stage-wrapper--landscape .capture-stage-meta,
@@ -1135,9 +1170,9 @@
 
 .capture-session-card {
   display: grid;
-  gap: 8px;
-  padding: 10px;
-  border-radius: 22px;
+  gap: 0;
+  padding: 8px;
+  border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 24%),
@@ -1186,23 +1221,6 @@
   font-size: 0.68rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-}
-
-.capture-session-card-copy {
-  display: grid;
-  gap: 4px;
-}
-
-.capture-session-card-sequence {
-  color: var(--capture-enterprise-text);
-  font-size: 0.66rem;
-  letter-spacing: 0.12em;
-}
-
-.capture-session-card-kind {
-  color: var(--capture-enterprise-text-soft);
-  font-size: 0.62rem;
-  letter-spacing: 0.08em;
 }
 
 .browser-capture-outcome-backdrop {
