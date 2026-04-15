@@ -59,6 +59,7 @@ interface CaptureScreenProps {
 }
 
 type UiDensity = 'roomy' | 'compact' | 'dense'
+type BrowserDeviceKind = 'desktop' | 'mobile'
 
 export function CaptureScreen({
   profile,
@@ -92,6 +93,7 @@ export function CaptureScreen({
 }: CaptureScreenProps) {
   const navigate = useNavigate()
   const [uiDensity, setUiDensity] = useState<UiDensity>('roomy')
+  const [deviceKind, setDeviceKind] = useState<BrowserDeviceKind>('desktop')
 
   const layout = profile
   const isPortrait = profile === 'portrait'
@@ -119,15 +121,16 @@ export function CaptureScreen({
       return
     }
 
-    const updateDensity = () => {
+    const updateViewportContext = () => {
       setUiDensity(resolveUiDensity(layout, window.innerWidth, window.innerHeight))
+      setDeviceKind(resolveBrowserDeviceKind(window))
     }
 
-    updateDensity()
-    window.addEventListener('resize', updateDensity)
+    updateViewportContext()
+    window.addEventListener('resize', updateViewportContext)
 
     return () => {
-      window.removeEventListener('resize', updateDensity)
+      window.removeEventListener('resize', updateViewportContext)
     }
   }, [layout])
 
@@ -284,7 +287,10 @@ export function CaptureScreen({
         ].join(' ')}
       >
         {profile === 'portrait' ? (
-          <div className={`capture-shell capture-shell--portrait is-${uiDensity}`}>
+          <div
+            className={`capture-shell capture-shell--portrait is-${uiDensity} device-${deviceKind}`}
+            data-device={deviceKind}
+          >
             {header}
             {portraitTelemetry}
             {portraitStage}
@@ -292,7 +298,10 @@ export function CaptureScreen({
             {sessionTray}
           </div>
         ) : (
-          <div className={`capture-shell capture-shell--landscape is-${uiDensity}`}>
+          <div
+            className={`capture-shell capture-shell--landscape is-${uiDensity} device-${deviceKind}`}
+            data-device={deviceKind}
+          >
             {header}
             {stage}
             <div className="capture-support-region capture-support-region--landscape">
@@ -393,5 +402,20 @@ function resolveUiDensity(
   }
 
   return 'roomy'
+}
+
+function resolveBrowserDeviceKind(currentWindow: Window): BrowserDeviceKind {
+  const hasTouchPoints = navigator.maxTouchPoints > 0
+  const coarsePointer = currentWindow.matchMedia('(pointer: coarse)').matches
+  const narrowViewport = currentWindow.innerWidth <= 900
+  const ua =
+    navigator.userAgentData?.mobile ??
+    /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(navigator.userAgent)
+
+  if ((hasTouchPoints && coarsePointer) || ua || (coarsePointer && narrowViewport)) {
+    return 'mobile'
+  }
+
+  return 'desktop'
 }
 
