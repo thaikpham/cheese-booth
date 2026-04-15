@@ -1643,6 +1643,106 @@ select.sd-input {
   bottom: max(24px, var(--safe-area-bottom));
 }
 
+@media (min-aspect-ratio: 2.15/1) {
+  .settings-dashboard {
+    grid-template-columns:
+      minmax(88px, 104px)
+      minmax(420px, 0.9fr)
+      minmax(620px, 1.12fr);
+  }
+
+  .sd-controls {
+    padding: clamp(22px, 2vw, 30px);
+  }
+
+  .sd-preview {
+    padding:
+      max(20px, var(--safe-area-top))
+      max(24px, var(--safe-area-right))
+      max(20px, var(--safe-area-bottom))
+      24px;
+  }
+
+  .sd-preview-stage-shell {
+    width: min(100%, 860px);
+  }
+
+  .sd-preview-stage-shell.is-landscape {
+    max-width: 860px;
+  }
+
+  .sd-preview-stage-shell.is-landscape .preview-frame {
+    max-width: min(100%, 820px);
+  }
+
+  .sd-preview-toolbar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .sd-preview-chip--wide {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-aspect-ratio: 10/19) {
+  .settings-dashboard--portrait {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .settings-dashboard--portrait .sd-rail {
+    padding-top: max(14px, var(--safe-area-top));
+  }
+
+  .settings-dashboard--portrait .sd-rail-item {
+    height: 48px;
+  }
+
+  .settings-dashboard--portrait .sd-rail-item span {
+    display: none;
+  }
+
+  .settings-dashboard--portrait .sd-preview--portrait {
+    padding:
+      max(18px, var(--safe-area-top))
+      max(18px, var(--safe-area-right))
+      18px
+      18px;
+  }
+
+  .settings-dashboard--portrait .sd-preview--portrait .sd-preview-shell {
+    gap: 14px;
+  }
+
+  .settings-dashboard--portrait .sd-preview--portrait .sd-preview-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settings-dashboard--portrait .sd-preview--portrait .sd-preview-stage-shell {
+    width: min(100%, 680px);
+    padding: 12px;
+    border-radius: 28px;
+  }
+
+  .settings-dashboard--portrait .sd-preview--portrait .sd-preview-stage-shell.is-portrait {
+    max-width: 680px;
+  }
+
+  .settings-dashboard--portrait .sd-preview--portrait .sd-preview-stage-shell.is-portrait .preview-frame {
+    width: min(100%, 620px);
+    max-width: 620px;
+    max-height: min(76svh, 1240px);
+  }
+
+  .settings-dashboard--portrait .sd-preview-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .settings-dashboard--portrait .sd-controls--portrait {
+    padding: 20px 20px 28px;
+  }
+}
+
 @media (min-aspect-ratio: 2/1) {
   .settings-dashboard {
     grid-template-columns:

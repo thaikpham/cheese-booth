@@ -238,10 +238,6 @@ export function CaptureScreen({
       shutterDisabled={shutterDisabled}
       onOpenSettings={() => navigate(getSettingsRoute(profile))}
       onShutter={onShutter}
-      onStartBrowserSession={onStartBrowserSession}
-      onFinalizeBrowserSession={onFinalizeBrowserSession}
-      onCancelBrowserSession={onCancelBrowserSession}
-      onResetBrowserSession={onResetBrowserSession}
     />
   )
 
@@ -249,6 +245,10 @@ export function CaptureScreen({
     <BrowserSessionFilmStripRail
       session={browserSession}
       layout={layout}
+      onStartBrowserSession={onStartBrowserSession}
+      onFinalizeBrowserSession={onFinalizeBrowserSession}
+      onCancelBrowserSession={onCancelBrowserSession}
+      onResetBrowserSession={onResetBrowserSession}
     />
   )
 
@@ -274,8 +274,8 @@ export function CaptureScreen({
             {header}
             {stage}
             <div className="capture-support-region capture-support-region--landscape">
-              {controlDock}
               {sessionTray}
+              {controlDock}
             </div>
           </div>
         )}

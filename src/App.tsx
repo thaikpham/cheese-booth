@@ -2,6 +2,7 @@ import './index.css'
 
 import cheeseLogo from '../cheese_icon_transparent.svg'
 import { matchPath, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
 
 import { CaptureScreen } from './components/CaptureScreen'
 import { LandingPage } from './components/LandingPage'
@@ -18,6 +19,37 @@ import {
   isKioskProfile,
 } from './lib/kioskProfiles'
 import type { KioskProfile } from './types'
+
+function useOrientationControl() {
+  useEffect(() => {
+    const setOrientation = () => {
+      const isMobile = window.innerWidth <= 768 || /Mobi|Android/i.test(navigator.userAgent)
+      
+      const orientation = screen.orientation as ScreenOrientation & { lock?: (orientation: string) => Promise<void> }
+      
+      if (orientation && orientation.lock) {
+        try {
+          if (isMobile) {
+            orientation.lock('portrait-primary').catch((err) => {
+              console.warn('Could not lock orientation to portrait:', err)
+            })
+          } else {
+            orientation.lock('landscape-primary').catch((err) => {
+              console.warn('Could not lock orientation to landscape:', err)
+            })
+          }
+        } catch (err) {
+          console.warn('Orientation lock not supported:', err)
+        }
+      }
+    }
+
+    setOrientation()
+
+    window.addEventListener('resize', setOrientation)
+    return () => window.removeEventListener('resize', setOrientation)
+  }, [])
+}
 
 const SESSION_GALLERY_ROUTE = '/session/:token'
 
@@ -195,6 +227,8 @@ function KioskShell() {
 }
 
 function App() {
+  useOrientationControl()
+
   return (
     <Routes>
       <Route

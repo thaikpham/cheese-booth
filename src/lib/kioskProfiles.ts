@@ -4,7 +4,7 @@ import {
   DEFAULT_PORTRAIT_OPERATOR_SETTINGS,
 } from '../types'
 
-export const DEFAULT_KIOSK_PROFILE: KioskProfile = 'landscape'
+export const DEFAULT_KIOSK_PROFILE: KioskProfile = 'portrait'
 
 export function isKioskProfile(value: string | null | undefined): value is KioskProfile {
   return value === 'portrait' || value === 'landscape'

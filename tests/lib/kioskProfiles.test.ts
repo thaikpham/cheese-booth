@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  DEFAULT_KIOSK_PROFILE,
   getKioskPreviewAspect,
   getKioskProfileAspectLabel,
   getKioskRotationOptions,
@@ -10,6 +11,10 @@ import {
 import { getDefaultOperatorSettings } from '../../src/lib/kioskProfiles'
 
 describe('kioskProfiles portrait policy', () => {
+  it('uses portrait as the default kiosk profile', () => {
+    expect(DEFAULT_KIOSK_PROFILE).toBe('portrait')
+  })
+
   it('keeps portrait preview/output on a 3:4 profile contract', () => {
     expect(getKioskPreviewAspect('portrait')).toBe('3 / 4')
     expect(getKioskProfileAspectLabel('portrait')).toBe('3:4')

@@ -50,6 +50,10 @@
   width: min(100%, 1520px);
 }
 
+.capture-panel--portrait {
+  width: min(100%, 960px);
+}
+
 .capture-shell {
   display: grid;
   width: 100%;
@@ -803,7 +807,11 @@
 
 .capture-support-region--landscape {
   grid-area: support;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.capture-support-region--landscape .capture-control-dock--landscape {
+  align-content: end;
 }
 
 .capture-session-tray {
@@ -894,9 +902,235 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.capture-session-tray-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.capture-session-tray-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.capture-session-tray-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.capture-session-tray[data-orientation='portrait'] .capture-session-tray-controls {
+  flex-wrap: wrap;
+}
+
+.capture-session-tray[data-orientation='landscape'] .capture-session-tray-controls {
+  flex-direction: column;
+}
+
 .capture-session-tray[data-orientation='portrait'] .capture-session-card {
   flex: 0 0 min(22vw, 168px);
   width: min(22vw, 168px);
+}
+
+@media (min-aspect-ratio: 2.15/1) {
+  .capture-screen--enterprise {
+    padding:
+      max(18px, var(--safe-area-top))
+      max(28px, var(--safe-area-right))
+      max(18px, var(--safe-area-bottom))
+      max(28px, var(--safe-area-left));
+  }
+
+  .capture-panel--landscape {
+    width: min(100%, 1880px);
+    padding: clamp(18px, 1.8vw, 28px);
+  }
+
+  .capture-shell--landscape {
+    grid-template-columns: minmax(0, 2fr) minmax(360px, 0.66fr);
+    gap: clamp(18px, 1.8vw, 28px);
+  }
+
+  .capture-stage-wrapper--landscape {
+    gap: 14px;
+  }
+
+  .capture-shell--landscape .capture-stage-frame {
+    width: min(100%, 1380px);
+  }
+
+  .capture-support-region--landscape {
+    gap: 12px;
+  }
+
+  .capture-control-dock--landscape {
+    gap: 12px;
+  }
+
+  .capture-control-dock--landscape .capture-session-summary {
+    padding: 16px;
+  }
+
+  .capture-control-dock--landscape .capture-session-summary-note {
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+
+  .capture-control-dock--landscape .capture-bottom-controls {
+    grid-template-columns: 84px minmax(0, 1fr) 96px;
+    gap: 10px;
+  }
+
+  .capture-control-dock--landscape .capture-dock-button,
+  .capture-control-dock--landscape .capture-dock-status {
+    min-height: 88px;
+    border-radius: 22px;
+  }
+
+  .capture-control-dock--landscape .capture-shutter-button {
+    width: 118px;
+    height: 118px;
+  }
+
+  .capture-session-tray--landscape {
+    padding: 14px;
+  }
+
+  .capture-session-tray[data-orientation='landscape'] .capture-session-tray-list {
+    gap: 10px;
+  }
+
+  .capture-session-tray[data-orientation='landscape'] .capture-session-card {
+    padding: 8px;
+    border-radius: 18px;
+  }
+
+  .capture-session-tray-controls {
+    gap: 6px;
+  }
+
+  .capture-session-tray-button {
+    padding: 6px 12px;
+    font-size: 0.68rem;
+  }
+}
+
+@media (max-aspect-ratio: 10/19) {
+  .capture-screen--enterprise {
+    padding:
+      max(14px, var(--safe-area-top))
+      max(14px, var(--safe-area-right))
+      max(14px, var(--safe-area-bottom))
+      max(14px, var(--safe-area-left));
+  }
+
+  .capture-panel--portrait {
+    width: min(100%, 920px);
+    height: calc(100dvh - max(28px, (var(--safe-area-top) + var(--safe-area-bottom) + 28px)));
+    padding: clamp(14px, 1.4vw, 18px);
+    border-radius: 28px;
+  }
+
+  .capture-shell--portrait {
+    gap: 12px;
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  }
+
+  .capture-shell--portrait .capture-shell-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .capture-shell--portrait .capture-header-pills {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .capture-stage-meta--portrait .capture-telemetry-bar {
+    gap: 6px;
+  }
+
+  .capture-stage-meta--portrait .capture-telemetry-chip {
+    min-height: 46px;
+    padding: 0 14px;
+    font-size: 0.74rem;
+  }
+
+  .capture-shell--portrait .capture-stage-frame {
+    height: min(100%, clamp(760px, calc(100dvh - 700px), 1320px));
+    min-width: min(100%, 430px);
+    max-width: min(100%, 780px);
+    border-radius: 30px;
+  }
+
+  .capture-control-dock--portrait {
+    gap: 12px;
+  }
+
+  .capture-control-dock--portrait .capture-session-summary {
+    gap: 10px;
+    padding: 16px;
+  }
+
+  .capture-control-dock--portrait .capture-session-summary-note {
+    font-size: 0.84rem;
+    line-height: 1.45;
+  }
+
+  .capture-control-dock--portrait .capture-session-action-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .capture-control-dock--portrait .capture-bottom-controls {
+    grid-template-columns: 92px minmax(0, 1fr) 104px;
+    gap: 12px;
+  }
+
+  .capture-control-dock--portrait .capture-dock-button,
+  .capture-control-dock--portrait .capture-dock-status {
+    min-height: 90px;
+    border-radius: 22px;
+  }
+
+  .capture-control-dock--portrait .capture-shutter-button {
+    width: 120px;
+    height: 120px;
+  }
+
+  .capture-session-tray--portrait {
+    padding: 14px;
+  }
+
+  .capture-session-tray[data-orientation='portrait'] .capture-session-tray-list {
+    gap: 10px;
+  }
+
+  .capture-session-tray[data-orientation='portrait'] .capture-session-card {
+    flex: 0 0 min(21vw, 160px);
+    width: min(21vw, 160px);
+    padding: 8px;
+  }
+
+  .capture-session-tray-controls {
+    gap: 6px;
+  }
+
+  .capture-session-tray-button {
+    padding: 6px 12px;
+    font-size: 0.68rem;
+  }
+
+  .capture-session-tray[data-orientation='portrait'] .capture-session-card {
+    border-radius: 18px;
+  }
 }
 
 .capture-session-card {
@@ -1390,5 +1624,54 @@
   .capture-shutter-button {
     width: 108px;
     height: 108px;
+  }
+}
+
+@media (max-aspect-ratio: 9/21) and (min-height: 2200px) {
+  .capture-panel--portrait {
+    width: min(100%, 1040px);
+    padding: clamp(16px, 1.6vw, 22px);
+  }
+
+  .capture-shell--portrait {
+    gap: clamp(10px, 1vh, 14px);
+  }
+
+  .capture-stage--portrait {
+    align-items: end;
+  }
+
+  .capture-stage-wrapper--portrait-only {
+    place-items: end center;
+  }
+
+  .capture-shell--portrait .capture-stage-frame {
+    height: min(100%, clamp(1280px, calc(100dvh - 700px), 1820px));
+    min-width: min(100%, 480px);
+    max-width: min(100%, 860px);
+  }
+
+  .capture-control-dock--portrait .capture-bottom-controls {
+    grid-template-columns: 112px minmax(0, 1fr) 128px;
+    gap: 14px;
+  }
+
+  .capture-control-dock--portrait .capture-dock-button,
+  .capture-control-dock--portrait .capture-dock-status {
+    min-height: 104px;
+  }
+
+  .capture-control-dock--portrait .capture-shutter-button {
+    width: 132px;
+    height: 132px;
+  }
+
+  .capture-session-tray--portrait {
+    padding: 16px;
+  }
+
+  .capture-session-tray[data-orientation='portrait'] .capture-session-card {
+    flex: 0 0 min(20vw, 184px);
+    width: min(20vw, 184px);
   }
 }
