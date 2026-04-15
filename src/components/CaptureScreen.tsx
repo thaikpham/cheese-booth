@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import type { CSSProperties, RefObject } from 'react'
 import { CircleDot, GalleryVerticalEnd } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -57,6 +58,8 @@ interface CaptureScreenProps {
   onRejectCaptureOutcome: () => void
 }
 
+type UiDensity = 'roomy' | 'compact' | 'dense'
+
 export function CaptureScreen({
   profile,
   settings,
@@ -88,6 +91,7 @@ export function CaptureScreen({
   onRejectCaptureOutcome,
 }: CaptureScreenProps) {
   const navigate = useNavigate()
+  const [uiDensity, setUiDensity] = useState<UiDensity>('roomy')
 
   const layout = profile
   const isPortrait = profile === 'portrait'
@@ -110,6 +114,23 @@ export function CaptureScreen({
     sourceUnavailable,
   )
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const updateDensity = () => {
+      setUiDensity(resolveUiDensity(layout, window.innerWidth, window.innerHeight))
+    }
+
+    updateDensity()
+    window.addEventListener('resize', updateDensity)
+
+    return () => {
+      window.removeEventListener('resize', updateDensity)
+    }
+  }, [layout])
+
   const header = (
     <header className="capture-shell-header">
       <Link to="/" className="capture-brand-link">
@@ -127,8 +148,7 @@ export function CaptureScreen({
           <span className="capture-brand-note">Capture Console</span>
         </span>
       </Link>
-
-      <div className="capture-header-pills" aria-label="Capture status">
+      <div className="capture-header-pills capture-header-pills--hidden" aria-label="Capture status">
         <span
           className={[
             'capture-header-pill',
@@ -233,6 +253,7 @@ export function CaptureScreen({
   const controlDock = (
     <CaptureSideRail
       layout={layout}
+      uiDensity={uiDensity}
       captureModeLabel={captureModeLabel}
       browserSession={browserSession}
       shutterDisabled={shutterDisabled}
@@ -245,6 +266,7 @@ export function CaptureScreen({
     <BrowserSessionFilmStripRail
       session={browserSession}
       layout={layout}
+      uiDensity={uiDensity}
       onStartBrowserSession={onStartBrowserSession}
       onFinalizeBrowserSession={onFinalizeBrowserSession}
       onCancelBrowserSession={onCancelBrowserSession}
@@ -262,7 +284,7 @@ export function CaptureScreen({
         ].join(' ')}
       >
         {profile === 'portrait' ? (
-          <div className="capture-shell capture-shell--portrait">
+          <div className={`capture-shell capture-shell--portrait is-${uiDensity}`}>
             {header}
             {portraitTelemetry}
             {portraitStage}
@@ -270,7 +292,7 @@ export function CaptureScreen({
             {sessionTray}
           </div>
         ) : (
-          <div className="capture-shell capture-shell--landscape">
+          <div className={`capture-shell capture-shell--landscape is-${uiDensity}`}>
             {header}
             {stage}
             <div className="capture-support-region capture-support-region--landscape">
@@ -340,3 +362,36 @@ function getCameraStatusBadge(
     tone: 'danger',
   }
 }
+
+function resolveUiDensity(
+  layout: KioskProfile,
+  viewportWidth: number,
+  viewportHeight: number,
+): UiDensity {
+  if (layout === 'portrait') {
+    if (viewportHeight < 760 || viewportWidth < 420) {
+      return 'dense'
+    }
+
+    if (
+      viewportHeight < 980 ||
+      viewportWidth < 560 ||
+      viewportHeight / viewportWidth > 2.18
+    ) {
+      return 'compact'
+    }
+
+    return 'roomy'
+  }
+
+  if (viewportHeight < 560 || viewportWidth < 900) {
+    return 'dense'
+  }
+
+  if (viewportHeight < 760 || viewportWidth < 1180) {
+    return 'compact'
+  }
+
+  return 'roomy'
+}
+

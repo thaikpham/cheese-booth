@@ -154,6 +154,10 @@
   justify-content: flex-end;
 }
 
+.capture-header-pills--hidden {
+  display: none;
+}
+
 .capture-header-pill {
   display: inline-flex;
   align-items: center;
@@ -1651,8 +1655,41 @@
     padding: clamp(16px, 1.6vw, 22px);
   }
 
-  .capture-shell--portrait {
-    gap: clamp(10px, 1vh, 14px);
+  .capture-shell--portrait.is-roomy {
+    --capture-shell-gap: clamp(9px, 0.95vh, 13px);
+    --capture-portrait-stage-min: 420px;
+    --capture-portrait-frame-height: min(100%, clamp(1320px, calc(100dvh - 680px), 1860px));
+    --capture-portrait-frame-max-width: min(100%, 880px);
+    --capture-session-card-size: min(18.8vw, 176px);
+    --capture-dock-box-min-height: 98px;
+    --capture-shutter-size: 126px;
+    --capture-telemetry-chip-height: 42px;
+  }
+
+  .capture-shell--portrait.is-compact {
+    --capture-shell-gap: clamp(8px, 0.9vh, 12px);
+    --capture-portrait-stage-min: 360px;
+    --capture-portrait-frame-height: min(100%, clamp(1220px, calc(100dvh - 660px), 1720px));
+    --capture-portrait-frame-max-width: min(100%, 820px);
+    --capture-session-card-size: min(17.6vw, 156px);
+    --capture-dock-box-min-height: 84px;
+    --capture-shutter-size: 110px;
+    --capture-telemetry-chip-height: 38px;
+  }
+
+  .capture-shell--portrait.is-dense {
+    --capture-shell-gap: clamp(7px, 0.8vh, 10px);
+    --capture-portrait-stage-min: 330px;
+    --capture-portrait-frame-height: min(100%, clamp(1100px, calc(100dvh - 620px), 1560px));
+    --capture-portrait-frame-max-width: min(100%, 760px);
+    --capture-session-card-size: min(16.2vw, 132px);
+    --capture-dock-box-min-height: 72px;
+    --capture-shutter-size: 96px;
+    --capture-telemetry-chip-height: 34px;
+  }
+
+  .capture-shell--portrait .capture-stage-frame {
+    min-width: min(100%, 480px);
   }
 
   .capture-stage--portrait {
@@ -1663,33 +1700,156 @@
     place-items: end center;
   }
 
-  .capture-shell--portrait .capture-stage-frame {
-    height: min(100%, clamp(1280px, calc(100dvh - 700px), 1820px));
-    min-width: min(100%, 480px);
-    max-width: min(100%, 860px);
-  }
-
   .capture-control-dock--portrait .capture-bottom-controls {
-    grid-template-columns: 112px minmax(0, 1fr) 128px;
-    gap: 14px;
+    grid-template-columns: 104px minmax(0, 1fr) 116px;
+    gap: 12px;
   }
 
-  .capture-control-dock--portrait .capture-dock-button,
-  .capture-control-dock--portrait .capture-dock-status {
-    min-height: 104px;
+  .capture-shell--portrait.is-compact .capture-control-dock--portrait .capture-bottom-controls,
+  .capture-shell--portrait.is-dense .capture-control-dock--portrait .capture-bottom-controls {
+    grid-template-columns: 92px minmax(0, 1fr) 104px;
+    gap: 10px;
   }
 
-  .capture-control-dock--portrait .capture-shutter-button {
-    width: 132px;
-    height: 132px;
+  .capture-shell--portrait.is-dense .capture-control-dock--portrait .capture-bottom-controls {
+    grid-template-columns: 84px minmax(0, 1fr) 94px;
+    gap: 8px;
   }
 
   .capture-session-tray--portrait {
-    padding: 16px;
+    padding: 12px;
   }
+}
 
-  .capture-session-tray[data-orientation='portrait'] .capture-session-card {
-    flex: 0 0 min(20vw, 184px);
-    width: min(20vw, 184px);
-  }
+/* Dynamic density system */
+.capture-shell {
+  --capture-shell-gap: clamp(14px, 2vh, 22px);
+  --capture-portrait-stage-min: 400px;
+  --capture-portrait-frame-height: min(100%, clamp(620px, calc(100dvh - 760px), 980px));
+  --capture-portrait-frame-max-width: min(100%, 760px);
+  --capture-landscape-stage-fr: 1.58fr;
+  --capture-landscape-support-fr: 0.82fr;
+  --capture-session-card-size: min(22vw, 168px);
+  --capture-dock-box-min-height: 104px;
+  --capture-shutter-size: 132px;
+  --capture-telemetry-chip-height: 46px;
+}
+
+.capture-shell--portrait {
+  gap: var(--capture-shell-gap);
+  grid-template-rows: auto auto minmax(var(--capture-portrait-stage-min), 1fr) auto auto;
+}
+
+.capture-shell--landscape {
+  gap: var(--capture-shell-gap);
+  grid-template-columns:
+    minmax(0, var(--capture-landscape-stage-fr))
+    minmax(300px, var(--capture-landscape-support-fr));
+}
+
+.capture-shell--portrait .capture-stage-frame {
+  height: var(--capture-portrait-frame-height);
+  max-width: var(--capture-portrait-frame-max-width);
+}
+
+.capture-shell--portrait .capture-stage-meta .capture-telemetry-chip {
+  min-height: var(--capture-telemetry-chip-height);
+}
+
+.capture-shell.is-compact {
+  --capture-shell-gap: clamp(10px, 1.4vh, 16px);
+  --capture-portrait-stage-min: 360px;
+  --capture-portrait-frame-height: min(100%, clamp(560px, calc(100dvh - 700px), 920px));
+  --capture-portrait-frame-max-width: min(100%, 700px);
+  --capture-landscape-stage-fr: 1.36fr;
+  --capture-landscape-support-fr: 0.9fr;
+  --capture-session-card-size: min(20vw, 150px);
+  --capture-dock-box-min-height: 92px;
+  --capture-shutter-size: 118px;
+  --capture-telemetry-chip-height: 42px;
+}
+
+.capture-shell.is-dense {
+  --capture-shell-gap: clamp(8px, 1vh, 12px);
+  --capture-portrait-stage-min: 320px;
+  --capture-portrait-frame-height: min(100%, clamp(500px, calc(100dvh - 620px), 820px));
+  --capture-portrait-frame-max-width: min(100%, 640px);
+  --capture-landscape-stage-fr: 1.2fr;
+  --capture-landscape-support-fr: 1fr;
+  --capture-session-card-size: min(18vw, 132px);
+  --capture-dock-box-min-height: 78px;
+  --capture-shutter-size: 102px;
+  --capture-telemetry-chip-height: 38px;
+}
+
+.capture-shell.is-compact .capture-control-dock .capture-dock-button,
+.capture-shell.is-compact .capture-control-dock .capture-dock-status,
+.capture-shell.is-dense .capture-control-dock .capture-dock-button,
+.capture-shell.is-dense .capture-control-dock .capture-dock-status {
+  min-height: var(--capture-dock-box-min-height);
+}
+
+.capture-shell.is-compact .capture-control-dock .capture-shutter-button,
+.capture-shell.is-dense .capture-control-dock .capture-shutter-button {
+  width: var(--capture-shutter-size);
+  height: var(--capture-shutter-size);
+}
+
+.capture-shell.is-compact .capture-session-tray[data-orientation='portrait'] .capture-session-card,
+.capture-shell.is-dense .capture-session-tray[data-orientation='portrait'] .capture-session-card {
+  flex: 0 0 var(--capture-session-card-size);
+  width: var(--capture-session-card-size);
+}
+
+.capture-shell.is-dense .capture-stage-meta .capture-telemetry-separator,
+.capture-shell.is-dense .capture-dock-button-label,
+.capture-shell.is-dense .capture-dock-status-label,
+.capture-shell.is-dense .capture-shutter-label,
+.capture-shell.is-dense .capture-session-tray-title {
+  display: none;
+}
+
+.capture-shell.is-dense .capture-session-tray-heading {
+  gap: 0;
+}
+
+.capture-shell.is-dense .capture-session-tray-heading svg {
+  display: none;
+}
+
+.capture-shell.is-dense .capture-session-tray-controls {
+  margin-top: 8px;
+}
+
+.capture-session-tray[data-density='compact'] {
+  padding: 12px;
+  gap: 10px;
+}
+
+.capture-session-tray[data-density='dense'] {
+  padding: 10px;
+  gap: 8px;
+}
+
+.capture-session-tray[data-density='dense'] .capture-session-tray-count {
+  min-height: 24px;
+  padding: 0 8px;
+  font-size: 0.58rem;
+}
+
+.capture-session-tray[data-density='dense'] .capture-session-tray-button {
+  padding: 6px 10px;
+  font-size: 0.66rem;
+}
+
+.capture-session-tray[data-density='dense'][data-orientation='portrait'] .capture-session-card[data-filled='false'] {
+  display: none;
+}
+
+.capture-session-tray[data-density='dense'][data-orientation='portrait'] .capture-session-card:nth-child(n + 4) {
+  display: none;
+}
+
+.capture-session-tray[data-density='dense'][data-orientation='landscape'] .capture-session-card[data-filled='false'] {
+  display: none;
 }

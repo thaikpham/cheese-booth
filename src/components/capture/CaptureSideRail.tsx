@@ -4,6 +4,7 @@ import type { BrowserCaptureSessionState } from '../../types'
 
 interface CaptureSideRailProps {
   layout: 'portrait' | 'landscape'
+  uiDensity: 'roomy' | 'compact' | 'dense'
   captureModeLabel: string
   browserSession: BrowserCaptureSessionState
   shutterDisabled: boolean
@@ -13,6 +14,7 @@ interface CaptureSideRailProps {
 
 export function CaptureSideRail({
   layout,
+  uiDensity,
   captureModeLabel,
   browserSession,
   shutterDisabled,
@@ -27,7 +29,9 @@ export function CaptureSideRail({
       className={[
         'capture-control-dock',
         `capture-control-dock--${layout}`,
+        `capture-control-dock--${uiDensity}`,
       ].join(' ')}
+      data-density={uiDensity}
       aria-label="Capture controls"
     >
       <div className="capture-bottom-controls">

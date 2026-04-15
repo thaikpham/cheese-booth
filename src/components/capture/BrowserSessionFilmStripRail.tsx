@@ -5,6 +5,7 @@ import type { BrowserCaptureSessionState } from '../../types'
 interface BrowserSessionFilmStripRailProps {
   session: BrowserCaptureSessionState
   layout: 'portrait' | 'landscape'
+  uiDensity: 'roomy' | 'compact' | 'dense'
   onStartBrowserSession?: () => void
   onFinalizeBrowserSession?: () => void
   onCancelBrowserSession?: () => void
@@ -14,6 +15,7 @@ interface BrowserSessionFilmStripRailProps {
 export function BrowserSessionFilmStripRail({
   session,
   layout,
+  uiDensity,
   onStartBrowserSession,
   onFinalizeBrowserSession,
   onCancelBrowserSession,
@@ -35,8 +37,10 @@ export function BrowserSessionFilmStripRail({
       className={[
         'capture-session-tray',
         `capture-session-tray--${layout}`,
+        `capture-session-tray--${uiDensity}`,
       ].join(' ')}
       data-orientation={layout}
+      data-density={uiDensity}
       aria-label="Session tray"
     >
       <div className="capture-session-tray-header">
