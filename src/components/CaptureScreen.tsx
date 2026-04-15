@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { CSSProperties, RefObject } from 'react'
+import { Monitor, Smartphone } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import cheeseLogo from '../../cheese_icon_transparent.svg'
 
@@ -48,6 +49,7 @@ interface CaptureScreenProps {
   onRetryBrowserSessionShare: () => void
   onCancelBrowserSession: () => void
   onResetBrowserSession: () => void
+  onRemoveBrowserSessionItem: (itemId: string) => void
   onModeChange: (mode: OperatorSettings['captureMode']) => void
   onCountdownChange: (countdownSec: OperatorSettings['countdownSec']) => void
   onSetRotationQuarter: (
@@ -84,6 +86,7 @@ export function CaptureScreen({
   onRetryBrowserSessionShare,
   onCancelBrowserSession,
   onResetBrowserSession,
+  onRemoveBrowserSessionItem,
   onModeChange,
   onCountdownChange,
   onSetRotationQuarter,
@@ -132,6 +135,9 @@ export function CaptureScreen({
     const newProfile: KioskProfile = profile === 'portrait' ? 'landscape' : 'portrait'
     navigate(getCaptureRoute(newProfile))
   }
+  const OrientationIcon = profile === 'portrait' ? Monitor : Smartphone
+  const orientationHint =
+    profile === 'portrait' ? 'Chuyển sang landscape' : 'Chuyển sang portrait'
 
   const header = (
     <header className="capture-shell-header">
@@ -150,6 +156,16 @@ export function CaptureScreen({
           <span className="capture-brand-note">Capture Console</span>
         </span>
       </Link>
+      <button
+        type="button"
+        className="capture-orientation-toggle capture-orientation-toggle--icon-only"
+        onClick={handleOrientationToggle}
+        disabled={isBusy || countdownValue !== null}
+        aria-label={orientationHint}
+        title={orientationHint}
+      >
+        <OrientationIcon size={18} />
+      </button>
     </header>
   )
 
@@ -169,7 +185,6 @@ export function CaptureScreen({
             onSetRotationQuarter={onSetRotationQuarter}
             onFlipHorizontal={onFlipHorizontal}
             onFlipVertical={onFlipVertical}
-            onToggleOrientation={handleOrientationToggle}
           />
         </div>
 
@@ -201,7 +216,6 @@ export function CaptureScreen({
         onSetRotationQuarter={onSetRotationQuarter}
         onFlipHorizontal={onFlipHorizontal}
         onFlipVertical={onFlipVertical}
-        onToggleOrientation={handleOrientationToggle}
       />
     </div>
   )
@@ -251,6 +265,10 @@ export function CaptureScreen({
       session={browserSession}
       layout={layout}
       uiDensity={uiDensity}
+      canRemoveItems={
+        browserSession.status === 'active' && !isBusy && countdownValue === null
+      }
+      onRemoveItem={onRemoveBrowserSessionItem}
     />
   )
 

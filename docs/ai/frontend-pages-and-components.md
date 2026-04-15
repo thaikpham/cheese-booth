@@ -125,13 +125,13 @@ Edit `CaptureScreen.tsx` when changing:
 Edit these subcomponents for focused behavior:
 
 - `CapturePreviewTelemetry.tsx`
-  quick settings chips, orientation toggle, inline menus
+  quick settings chips and inline menus
 - `CapturePreview.tsx`
   live preview shell, permission/source/countdown overlays
 - `CaptureSideRail.tsx`
   dock controls, fixed multi-state session button, long-press confirm UX
 - `BrowserSessionFilmStripRail.tsx`
-  display-only session tray
+  session tray with visual occupancy and quick delete for committed items
 - `BrowserSessionOverlay.tsx`
   review, finalizing, QR-ready, and error overlays
 
@@ -139,8 +139,9 @@ Important current rule:
 
 - The dock uses a fixed three-slot layout:
   settings, shutter, session-flow button.
-- The session tray is display-only; start/finalize/cancel actions no longer live there.
+- The session tray no longer owns start/finalize/cancel actions, but it does own quick delete for already committed items while the session is active.
 - In landscape, the brand header now lives inside the support column above the session tray instead of spanning the full shell width.
+- The portrait/landscape switch now lives in the header as an icon-only action with a hover hint, not inside the telemetry chips.
 
 ## Settings Dashboard
 
@@ -253,10 +254,10 @@ Do not move expiry/token policy into the page; that belongs to the backend route
 ### `CapturePreviewTelemetry`
 
 Purpose:
-- inline quick settings for mode, countdown, rotation, flips, and orientation toggle
+- inline quick settings for mode, countdown, rotation, and flips
 
 Current note:
-- the orientation toggle was merged into the quick-settings cluster instead of living in the header
+- the orientation toggle no longer lives here; it now lives in the page header as an icon-only action
 
 ### `CaptureSideRail`
 
@@ -282,6 +283,8 @@ Current note:
 
 Purpose:
 - visual occupancy/status of up to four session items
+- quick delete of committed items during an active session
 
 Current note:
 - no longer owns start/finalize/cancel buttons
+- deleting an item from the tray frees a slot so the user can keep shooting up to the session limit of four items

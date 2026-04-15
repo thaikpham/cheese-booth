@@ -61,6 +61,7 @@ interface UseCaptureActionsResult {
   retryBrowserSessionShare: () => Promise<boolean>
   cancelBrowserSession: () => void
   resetBrowserSession: () => void
+  removeBrowserSessionItem: (itemId: string) => void
   approveCaptureOutcome: () => void
   rejectCaptureOutcome: () => void
   setMode: (captureMode: CaptureMode) => void
@@ -122,6 +123,7 @@ export function useCaptureActions({
     enterReviewingShot,
     rejectReviewedShot,
     addSessionItem,
+    removeSessionItem,
     startFinalizing,
     completeSessionShare,
     failSessionShare,
@@ -377,6 +379,7 @@ export function useCaptureActions({
     retryBrowserSessionShare: finalizeBrowserSession,
     cancelBrowserSession,
     resetBrowserSession: resetBrowserSessionFlow,
+    removeBrowserSessionItem: removeSessionItem,
     approveCaptureOutcome,
     rejectCaptureOutcome,
     setMode: (captureMode: CaptureMode) => updateSettings({ captureMode }),

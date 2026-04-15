@@ -18,6 +18,13 @@ function revokeSessionItemUrls(items: BrowserSessionItem[]): void {
   })
 }
 
+function resequenceSessionItems(items: BrowserSessionItem[]): BrowserSessionItem[] {
+  return items.map((item, index) => ({
+    ...item,
+    sequence: index + 1,
+  }))
+}
+
 export function useBrowserCaptureSession() {
   const [browserSession, setBrowserSession] = useState<BrowserCaptureSessionState>(
     DEFAULT_BROWSER_CAPTURE_SESSION_STATE,
@@ -76,6 +83,25 @@ export function useBrowserCaptureSession() {
     }))
   }
 
+  function removeSessionItem(itemId: string): void {
+    setBrowserSession((current) => {
+      const removedItem = current.items.find((item) => item.id === itemId)
+
+      if (!removedItem) {
+        return current
+      }
+
+      revokeSessionItemUrls([removedItem])
+
+      return {
+        ...current,
+        items: resequenceSessionItems(
+          current.items.filter((item) => item.id !== itemId),
+        ),
+      }
+    })
+  }
+
   function startFinalizing(): void {
     setBrowserSession((current) => ({
       ...current,
@@ -130,6 +156,7 @@ export function useBrowserCaptureSession() {
     enterReviewingShot,
     rejectReviewedShot,
     addSessionItem,
+    removeSessionItem,
     startFinalizing,
     completeSessionShare,
     failSessionShare,

@@ -161,6 +161,7 @@ Important rule:
 
 - this hook owns domain session status
 - `CaptureSideRail` owns extra UI-only session-button sub-states such as long-press confirm
+- removing a committed session item resequences the remaining items to keep slot numbering contiguous
 
 ## `useKioskBootstrap()`
 
@@ -253,6 +254,8 @@ Main transitions:
   shutter captured a new staged shot
 - `reviewing-shot` -> `active`
   approve or reject review
+- `active` -> `active`
+  remove a committed item from the tray and resequence the remaining items
 - `active` -> `finalizing`
   finalize/upload requested
 - `finalizing` -> `ready`
@@ -320,6 +323,7 @@ Revoked by:
 - `disposeBrowserSessionItem()`
 - `disposeCaptureOutcome()`
 - `useBrowserCaptureSession()` reset/unmount cleanup
+- `useBrowserCaptureSession()` item deletion cleanup for committed tray items
 
 ## MediaStream cleanup
 

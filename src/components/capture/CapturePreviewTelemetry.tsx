@@ -4,9 +4,7 @@ import {
   Crop,
   FlipHorizontal2,
   FlipVertical2,
-  Monitor,
   RotateCw,
-  Smartphone,
   type LucideIcon,
 } from 'lucide-react'
 import { Fragment, useEffect, useRef, useState } from 'react'
@@ -67,7 +65,6 @@ interface CapturePreviewTelemetryProps {
   ) => void
   onFlipHorizontal: () => void
   onFlipVertical: () => void
-  onToggleOrientation?: () => void
 }
 
 const COUNTDOWN_OPTIONS: CountdownSec[] = [3, 5, 10]
@@ -80,7 +77,6 @@ export function CapturePreviewTelemetry({
   onSetRotationQuarter,
   onFlipHorizontal,
   onFlipVertical,
-  onToggleOrientation,
 }: CapturePreviewTelemetryProps) {
   const rootRef = useRef<HTMLDivElement | null>(null)
   const [openTokenId, setOpenTokenId] = useState<InteractiveTokenId | null>(null)
@@ -359,25 +355,6 @@ export function CapturePreviewTelemetry({
           </Fragment>
         )
       })}
-
-      {onToggleOrientation ? (
-        <span className="capture-telemetry-chip-wrap">
-          <button
-            type="button"
-            className="capture-telemetry-chip capture-telemetry-chip--interactive"
-            onClick={onToggleOrientation}
-            disabled={disabled}
-            aria-label={`Switch to ${profile === 'portrait' ? 'landscape' : 'portrait'} mode`}
-            title={`Switch to ${profile === 'portrait' ? 'landscape' : 'portrait'} mode`}
-          >
-            <span className="capture-telemetry-chip-main">
-              <Monitor size={15} className={profile === 'landscape' ? 'active' : ''} />
-              <Smartphone size={15} className={profile === 'portrait' ? 'active' : ''} />
-              <span>{profile === 'portrait' ? 'Portrait' : 'Landscape'}</span>
-            </span>
-          </button>
-        </span>
-      ) : null}
     </div>
   )
 }

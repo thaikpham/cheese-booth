@@ -78,6 +78,7 @@ function ProfiledKioskExperience({
     retryBrowserSessionShare,
     cancelBrowserSession,
     resetBrowserSession,
+    removeBrowserSessionItem,
     approveCaptureOutcome,
     rejectCaptureOutcome,
     setMode,
@@ -149,6 +150,7 @@ function ProfiledKioskExperience({
               }}
               onCancelBrowserSession={cancelBrowserSession}
               onResetBrowserSession={resetBrowserSession}
+              onRemoveBrowserSessionItem={removeBrowserSessionItem}
               onModeChange={setMode}
               onCountdownChange={setCountdown}
               onSetRotationQuarter={setRotationQuarter}
