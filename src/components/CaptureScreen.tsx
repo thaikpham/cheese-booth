@@ -408,8 +408,13 @@ function resolveBrowserDeviceKind(currentWindow: Window): BrowserDeviceKind {
   const hasTouchPoints = navigator.maxTouchPoints > 0
   const coarsePointer = currentWindow.matchMedia('(pointer: coarse)').matches
   const narrowViewport = currentWindow.innerWidth <= 900
+  const userAgentData = (
+    navigator as Navigator & {
+      userAgentData?: { mobile?: boolean }
+    }
+  ).userAgentData
   const ua =
-    navigator.userAgentData?.mobile ??
+    userAgentData?.mobile ??
     /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(navigator.userAgent)
 
   if ((hasTouchPoints && coarsePointer) || ua || (coarsePointer && narrowViewport)) {
