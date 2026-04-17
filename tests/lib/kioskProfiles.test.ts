@@ -27,6 +27,12 @@ describe('kioskProfiles portrait policy', () => {
     expect(sanitizeRotationQuarterForProfile('portrait', 3)).toBe(1)
   })
 
+  it('releases portrait rotation lock for performance mode', () => {
+    expect(getKioskRotationOptions('portrait', 'performance')).toEqual([0, 1, 2, 3])
+    expect(sanitizeRotationQuarterForProfile('portrait', 0, 'performance')).toBe(0)
+    expect(sanitizeRotationQuarterForProfile('portrait', 3, 'performance')).toBe(3)
+  })
+
   it('preserves landscape rotation freedom', () => {
     expect(getKioskRotationOptions('landscape')).toEqual([0, 1, 2, 3])
     expect(sanitizeRotationQuarterForProfile('landscape', 3)).toBe(3)
@@ -37,14 +43,29 @@ describe('kioskProfiles portrait policy', () => {
       normalizeOperatorSettingsForProfile('portrait', {
         ...getDefaultOperatorSettings('portrait'),
         deviceId: 'portrait-cam',
+        audioDeviceId: 'portrait-audio',
         rotationQuarter: 3,
         flipHorizontal: false,
       }),
     ).toEqual({
       ...getDefaultOperatorSettings('portrait'),
-      deviceId: 'portrait-cam',
-      rotationQuarter: 1,
-      flipHorizontal: false,
+        deviceId: 'portrait-cam',
+        audioDeviceId: 'portrait-audio',
+        rotationQuarter: 1,
+        flipHorizontal: false,
+      })
+  })
+
+  it('preserves portrait performance rotation without forcing 90 degrees', () => {
+    expect(
+      normalizeOperatorSettingsForProfile('portrait', {
+        ...getDefaultOperatorSettings('portrait'),
+        captureMode: 'performance',
+        rotationQuarter: 0,
+      }),
+    ).toMatchObject({
+      captureMode: 'performance',
+      rotationQuarter: 0,
     })
   })
 })

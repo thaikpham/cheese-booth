@@ -17,15 +17,42 @@ function mergeOperatorSettings(
   const defaults = getDefaultOperatorSettings(profile)
 
   return {
-    captureMode: defaults.captureMode,
+    captureMode:
+      loaded?.captureMode === 'photo' ||
+      loaded?.captureMode === 'boomerang' ||
+      loaded?.captureMode === 'performance'
+        ? loaded.captureMode
+        : defaults.captureMode,
     deviceId:
       typeof loaded?.deviceId === 'string' || loaded?.deviceId === null
         ? loaded.deviceId
         : defaults.deviceId,
-    countdownSec: defaults.countdownSec,
-    rotationQuarter: defaults.rotationQuarter,
-    flipHorizontal: defaults.flipHorizontal,
-    flipVertical: defaults.flipVertical,
+    audioDeviceId:
+      typeof loaded?.audioDeviceId === 'string' || loaded?.audioDeviceId === null
+        ? loaded.audioDeviceId
+        : defaults.audioDeviceId,
+    countdownSec:
+      loaded?.countdownSec === 0 ||
+      loaded?.countdownSec === 3 ||
+      loaded?.countdownSec === 5 ||
+      loaded?.countdownSec === 10
+        ? loaded.countdownSec
+        : defaults.countdownSec,
+    rotationQuarter:
+      loaded?.rotationQuarter === 0 ||
+      loaded?.rotationQuarter === 1 ||
+      loaded?.rotationQuarter === 2 ||
+      loaded?.rotationQuarter === 3
+        ? loaded.rotationQuarter
+        : defaults.rotationQuarter,
+    flipHorizontal:
+      typeof loaded?.flipHorizontal === 'boolean'
+        ? loaded.flipHorizontal
+        : defaults.flipHorizontal,
+    flipVertical:
+      typeof loaded?.flipVertical === 'boolean'
+        ? loaded.flipVertical
+        : defaults.flipVertical,
   }
 }
 

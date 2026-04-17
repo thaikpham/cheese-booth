@@ -1,5 +1,4 @@
 import {
-  startTransition,
   useEffect,
   useRef,
   useState,
@@ -8,24 +7,18 @@ import {
   type SetStateAction,
 } from 'react'
 
+import { getKioskProfileAspectRatio } from '../lib/kioskProfiles'
 import {
-  getKioskProfileAspectRatio,
-  getKioskRotationOptions,
-  sanitizeRotationQuarterForProfile,
-} from '../lib/kioskProfiles'
-import { playCountdownCue, playShutterCue } from '../lib/captureSounds'
+  type RenderedCapture,
+  startPerformanceRecording,
+  type PerformanceRecordingController,
+} from '../lib/media'
 import {
   completeCloudCaptureSession,
   initCloudCaptureSession,
   uploadCaptureToSignedUrl,
 } from '../lib/cloudShare'
-import {
-  type RenderedCapture,
-  renderBoomerangFromVideo,
-  renderPhotoFromVideo,
-} from '../lib/media'
 import type {
-  BoomerangRecordingIndicator,
   BrowserCaptureSessionState,
   BrowserSessionItem,
   CameraSessionState,
@@ -34,11 +27,25 @@ import type {
   CountdownSec,
   KioskProfile,
   OperatorSettings,
+  RecordingProgressIndicator,
 } from '../types'
+import {
+  disposeBrowserSessionItem,
+  disposeCaptureOutcome,
+} from './captureActions/blobLifecycle'
+import {
+  createCaptureOutcome,
+  createStagedBrowserSessionItem,
+  renderCaptureFromVideo,
+  runCaptureCountdown,
+} from './captureActions/captureRender'
+import { createSettingsActionHandlers } from './captureActions/settingsActions'
+import {
+  mapSessionItemsToInitPayload,
+  resolveSessionUploadPairs,
+} from './captureActions/sessionUploadUtils'
 import { useBrowserCaptureSession } from './useBrowserCaptureSession'
 import { getMediaErrorMessage, transformFromSettings } from './kioskControllerUtils'
-
-const SHUTTER_CAPTURE_DELAY_MS = 180
 
 interface UseCaptureActionsOptions {
   profile: KioskProfile
@@ -52,7 +59,7 @@ interface UseCaptureActionsOptions {
 interface UseCaptureActionsResult {
   isBusy: boolean
   countdownValue: number | null
-  boomerangRecording: BoomerangRecordingIndicator | null
+  recordingProgress: RecordingProgressIndicator | null
   captureOutcome: CaptureOutcome | null
   browserSession: BrowserCaptureSessionState
   handleShutter: () => Promise<boolean>
@@ -71,32 +78,7 @@ interface UseCaptureActionsResult {
   toggleFlipHorizontal: () => void
   toggleFlipVertical: () => void
   setDevice: (deviceId: string) => void
-}
-
-function revokeUrl(url?: string): void {
-  if (url?.startsWith('blob:')) {
-    window.URL.revokeObjectURL(url)
-  }
-}
-
-function disposeBrowserSessionItem(item: BrowserSessionItem | null): void {
-  if (!item) {
-    return
-  }
-
-  revokeUrl(item.previewUrl)
-
-  if (item.posterUrl !== item.previewUrl) {
-    revokeUrl(item.posterUrl)
-  }
-}
-
-function disposeCaptureOutcome(outcome: CaptureOutcome | null): void {
-  if (!outcome) {
-    return
-  }
-
-  revokeUrl(outcome.previewUrl)
+  setAudioDevice: (deviceId: string) => void
 }
 
 export function useCaptureActions({
@@ -109,8 +91,8 @@ export function useCaptureActions({
 }: UseCaptureActionsOptions): UseCaptureActionsResult {
   const [isBusy, setIsBusy] = useState(false)
   const [countdownValue, setCountdownValue] = useState<number | null>(null)
-  const [boomerangRecording, setBoomerangRecording] =
-    useState<BoomerangRecordingIndicator | null>(null)
+  const [recordingProgress, setRecordingProgress] =
+    useState<RecordingProgressIndicator | null>(null)
   const [captureOutcome, setCaptureOutcome] = useState<CaptureOutcome | null>(null)
   const [stagedBrowserItem, setStagedBrowserItem] = useState<BrowserSessionItem | null>(
     null,
@@ -130,66 +112,81 @@ export function useCaptureActions({
   } = useBrowserCaptureSession()
   const stagedBrowserItemRef = useRef<BrowserSessionItem | null>(null)
   const captureOutcomeRef = useRef<CaptureOutcome | null>(null)
+  const performanceRecordingRef = useRef<PerformanceRecordingController | null>(null)
   const outputAspectRatio = getKioskProfileAspectRatio(profile)
 
   stagedBrowserItemRef.current = stagedBrowserItem
   captureOutcomeRef.current = captureOutcome
 
+  const settingsActions = createSettingsActionHandlers({
+    profile,
+    updateSettings,
+    setSettings,
+  })
+
   useEffect(() => {
     return () => {
+      performanceRecordingRef.current?.stop()
       disposeBrowserSessionItem(stagedBrowserItemRef.current)
       disposeCaptureOutcome(captureOutcomeRef.current)
     }
   }, [])
 
-  async function runCountdown(): Promise<void> {
-    for (let tick = Number(settings.countdownSec); tick >= 0; tick -= 1) {
-      setCountdownValue(tick)
-      if (tick === 0) {
-        void playShutterCue()
-      } else {
-        void playCountdownCue(tick)
-      }
-      await new Promise((resolve) => {
-        window.setTimeout(resolve, tick === 0 ? SHUTTER_CAPTURE_DELAY_MS : 1000)
-      })
-    }
-
-    setCountdownValue(null)
-  }
-
-  async function renderCapture(kind: CaptureMode): Promise<RenderedCapture> {
+  async function captureAndStage(kind: 'photo' | 'boomerang'): Promise<{
+    outcome: CaptureOutcome
+    rendered: Awaited<ReturnType<typeof renderCaptureFromVideo>>
+  }> {
     const video = videoRef.current
 
     if (!video || video.readyState < 2) {
       throw new Error('Preview chưa sẵn sàng để capture.')
     }
 
-    return kind === 'photo'
-      ? renderPhotoFromVideo(video, transformFromSettings(settings), outputAspectRatio)
-      : renderBoomerangFromVideo(video, transformFromSettings(settings), outputAspectRatio, {
-          onProgress: (progress) => {
-            startTransition(() => {
-              setBoomerangRecording(progress)
-            })
-          },
-        })
+    const rendered = await renderCaptureFromVideo({
+      kind,
+      video,
+      transform: transformFromSettings(settings),
+      outputAspectRatio,
+      onRecordingProgress: setRecordingProgress,
+    })
+
+    return {
+      outcome: createCaptureOutcome(kind, rendered),
+      rendered,
+    }
   }
 
-  async function captureAndStage(kind: CaptureMode): Promise<{
+  async function recordPerformanceAndStage(): Promise<{
     outcome: CaptureOutcome
     rendered: RenderedCapture
   }> {
-    const rendered = await renderCapture(kind)
+    const video = videoRef.current
+
+    if (!video || video.readyState < 2) {
+      throw new Error('Preview chưa sẵn sàng để quay performance.')
+    }
+
+    const controller = startPerformanceRecording({
+      profile,
+      video,
+      transform: transformFromSettings(settings),
+      audioDeviceId: settings.audioDeviceId,
+      onProgress: setRecordingProgress,
+      onAudioFallback: () => {
+        setCameraSession((current) => ({
+          ...current,
+          lastError:
+            'Không lấy được audio HDMI từ Cam Link. Clip này sẽ được lưu không tiếng.',
+        }))
+      },
+    })
+
+    performanceRecordingRef.current = controller
+
+    const rendered = await controller.result
 
     return {
-      outcome: {
-        kind,
-        previewUrl: window.URL.createObjectURL(rendered.blob),
-        mimeType: rendered.mimeType,
-        width: rendered.width,
-        height: rendered.height,
-      },
+      outcome: createCaptureOutcome('performance', rendered),
       rendered,
     }
   }
@@ -234,7 +231,7 @@ export function useCaptureActions({
 
   function startBrowserSession(): void {
     resetBrowserSessionFlow()
-    openBrowserSession()
+    openBrowserSession(settings.captureMode)
   }
 
   function cancelBrowserSession(): void {
@@ -244,7 +241,7 @@ export function useCaptureActions({
   }
 
   async function finalizeBrowserSession(): Promise<boolean> {
-    if (isBusy || browserSession.items.length === 0) {
+    if (isBusy || browserSession.items.length === 0 || recordingProgress !== null) {
       return false
     }
 
@@ -257,31 +254,15 @@ export function useCaptureActions({
 
     try {
       const init = await initCloudCaptureSession(
-        browserSession.items.map((item) => ({
-          kind: item.kind,
-          mimeType: item.mimeType,
-          extension: item.extension,
-          byteSize: item.blob.size,
-          width: item.width,
-          height: item.height,
-          sequence: item.sequence,
-        })),
+        mapSessionItemsToInitPayload(browserSession.items),
       )
 
       await Promise.all(
-        init.items.map(async (remoteItem) => {
-          const localItem = browserSession.items.find(
-            (item) => item.sequence === remoteItem.sequence,
-          )
-
-          if (!localItem) {
-            throw new Error(
-              `Không tìm thấy item local cho sequence ${remoteItem.sequence}.`,
-            )
-          }
-
-          await uploadCaptureToSignedUrl(remoteItem.upload, localItem.blob)
-        }),
+        resolveSessionUploadPairs(browserSession.items, init.items).map(
+          async ({ localItem, remoteItem }) => {
+            await uploadCaptureToSignedUrl(remoteItem.upload, localItem.blob)
+          },
+        ),
       )
 
       const complete = await completeCloudCaptureSession(init.sessionId)
@@ -308,6 +289,11 @@ export function useCaptureActions({
   }
 
   async function handleShutter(): Promise<boolean> {
+    if (performanceRecordingRef.current) {
+      performanceRecordingRef.current.stop()
+      return true
+    }
+
     if (
       isBusy ||
       browserSession.status !== 'active' ||
@@ -317,36 +303,31 @@ export function useCaptureActions({
     }
 
     setIsBusy(true)
-    setBoomerangRecording(null)
+    setRecordingProgress(null)
     setCameraSession((current) => ({ ...current, lastError: null }))
     clearCaptureOutcome()
     clearStagedBrowserShot()
 
     try {
-      await runCountdown()
+      await runCaptureCountdown({
+        countdownSec: Number(settings.countdownSec),
+        setCountdownValue,
+      })
 
-      const { outcome, rendered } = await captureAndStage(settings.captureMode)
+      const { outcome, rendered } =
+        settings.captureMode === 'performance'
+          ? await recordPerformanceAndStage()
+          : await captureAndStage(settings.captureMode)
 
       setCaptureOutcome(outcome)
       captureOutcomeRef.current = outcome
 
-      const previewUrl = outcome.previewUrl
-      const posterUrl = rendered.posterBlob
-        ? window.URL.createObjectURL(rendered.posterBlob)
-        : previewUrl
-      const nextItem: BrowserSessionItem = {
-        id: crypto.randomUUID(),
+      const nextItem: BrowserSessionItem = createStagedBrowserSessionItem({
         kind: settings.captureMode,
         sequence: browserSession.items.length + 1,
-        createdAt: Date.now(),
-        previewUrl,
-        posterUrl,
-        mimeType: rendered.mimeType,
-        extension: rendered.extension,
-        width: rendered.width,
-        height: rendered.height,
-        blob: rendered.blob,
-      }
+        rendered,
+        previewUrl: outcome.previewUrl,
+      })
 
       stagedBrowserItemRef.current = nextItem
       setStagedBrowserItem(nextItem)
@@ -359,8 +340,9 @@ export function useCaptureActions({
         lastError: getMediaErrorMessage(error),
       }))
     } finally {
+      performanceRecordingRef.current = null
       setCountdownValue(null)
-      setBoomerangRecording(null)
+      setRecordingProgress(null)
       setIsBusy(false)
     }
 
@@ -370,7 +352,7 @@ export function useCaptureActions({
   return {
     isBusy,
     countdownValue,
-    boomerangRecording,
+    recordingProgress,
     captureOutcome,
     browserSession,
     handleShutter,
@@ -382,35 +364,19 @@ export function useCaptureActions({
     removeBrowserSessionItem: removeSessionItem,
     approveCaptureOutcome,
     rejectCaptureOutcome,
-    setMode: (captureMode: CaptureMode) => updateSettings({ captureMode }),
-    setCountdown: (countdownSec: CountdownSec) => updateSettings({ countdownSec }),
-    setRotationQuarter: (rotationQuarter: OperatorSettings['rotationQuarter']) =>
-      updateSettings({
-        rotationQuarter: sanitizeRotationQuarterForProfile(profile, rotationQuarter),
-      }),
-    rotate: () =>
-      setSettings((current) => {
-        const rotationOptions = getKioskRotationOptions(profile)
-        const currentIndex = rotationOptions.indexOf(current.rotationQuarter)
-        const nextRotation =
-          rotationOptions[(currentIndex + 1) % rotationOptions.length] ??
-          rotationOptions[0]
+    setMode: (captureMode) => {
+      if (browserSession.status !== 'idle') {
+        return
+      }
 
-        return {
-          ...current,
-          rotationQuarter: nextRotation,
-        }
-      }),
-    toggleFlipHorizontal: () =>
-      setSettings((current) => ({
-        ...current,
-        flipHorizontal: !current.flipHorizontal,
-      })),
-    toggleFlipVertical: () =>
-      setSettings((current) => ({
-        ...current,
-        flipVertical: !current.flipVertical,
-      })),
-    setDevice: (deviceId: string) => updateSettings({ deviceId: deviceId || null }),
+      settingsActions.setMode(captureMode)
+    },
+    setCountdown: settingsActions.setCountdown,
+    setRotationQuarter: settingsActions.setRotationQuarter,
+    rotate: settingsActions.rotate,
+    toggleFlipHorizontal: settingsActions.toggleFlipHorizontal,
+    toggleFlipVertical: settingsActions.toggleFlipVertical,
+    setDevice: settingsActions.setDevice,
+    setAudioDevice: settingsActions.setAudioDevice,
   }
 }

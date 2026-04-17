@@ -14,9 +14,6 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1029.0",
     "@aws-sdk/s3-request-presigner": "^3.1029.0",
-    "@fontsource/ibm-plex-mono": "^5.2.7",
-    "@fontsource/red-hat-mono": "^5.2.8",
-    "@fontsource/space-grotesk": "^5.2.10",
     "@neondatabase/serverless": "^1.0.2",
     "h264-mp4-encoder": "^1.0.12",
     "lucide-react": "^1.8.0",

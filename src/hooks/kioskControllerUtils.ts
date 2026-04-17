@@ -1,4 +1,5 @@
 import type {
+  AudioSourceDescriptor,
   OperatorSettings,
   SourceDescriptor,
   TransformSettings,
@@ -83,8 +84,12 @@ export function getMediaErrorMessage(error: unknown): string {
   return 'Không thể truy cập camera.'
 }
 
+function normalizeDeviceLabel(label: string): string {
+  return label.trim().toLowerCase()
+}
+
 function scoreSonyPreference(label: string): number {
-  const normalized = label.toLowerCase()
+  const normalized = normalizeDeviceLabel(label)
 
   // 1. TOP PRIORITY: Capture Cards (Highest Quality/Stability)
   if (
@@ -120,6 +125,76 @@ export function toSourceDescriptor(
     label: device.label || `Camera ${index + 1}`,
     isSonyPreferred: scoreSonyPreference(device.label) < 10,
   }
+}
+
+function scoreAudioPairingPreference(
+  label: string,
+  selectedVideoLabel?: string | null,
+): number {
+  const normalized = normalizeDeviceLabel(label)
+  const normalizedVideoLabel = normalizeDeviceLabel(selectedVideoLabel ?? '')
+
+  if (!normalized) {
+    return 20
+  }
+
+  if (
+    normalizedVideoLabel &&
+    (normalized.includes(normalizedVideoLabel) ||
+      normalizedVideoLabel.includes(normalized))
+  ) {
+    return 0
+  }
+
+  if (
+    normalized.includes('cam link') ||
+    normalized.includes('capture') ||
+    normalized.includes('hdmi') ||
+    normalized.includes('magewell')
+  ) {
+    return 1
+  }
+
+  if (normalized.includes('sony')) {
+    return 4
+  }
+
+  return 10
+}
+
+export function toAudioSourceDescriptor(
+  device: MediaDeviceInfo,
+  index: number,
+): AudioSourceDescriptor {
+  return {
+    deviceId: device.deviceId,
+    label: device.label || `Audio ${index + 1}`,
+    isCamLinkPreferred: scoreAudioPairingPreference(device.label) < 10,
+  }
+}
+
+export function pickBestAudioDeviceId(
+  sources: AudioSourceDescriptor[],
+  currentDeviceId: string | null,
+  selectedVideoLabel?: string | null,
+): string | null {
+  if (currentDeviceId && sources.some((source) => source.deviceId === currentDeviceId)) {
+    return currentDeviceId
+  }
+
+  const ranked = [...sources].sort((left, right) => {
+    const scoreDiff =
+      scoreAudioPairingPreference(left.label, selectedVideoLabel) -
+      scoreAudioPairingPreference(right.label, selectedVideoLabel)
+
+    if (scoreDiff !== 0) {
+      return scoreDiff
+    }
+
+    return left.label.localeCompare(right.label)
+  })
+
+  return ranked[0]?.deviceId ?? null
 }
 
 export function pickBestDeviceId(

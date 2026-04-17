@@ -73,8 +73,8 @@ export function BrowserSessionFilmStripRail({
                         type="button"
                         className="capture-session-card-remove"
                         onClick={() => onRemoveItem(item.id)}
-                        aria-label={`Xóa ảnh ${slot.sequence} khỏi session`}
-                        title="Xóa ảnh này khỏi session"
+                        aria-label={`Xóa item ${slot.sequence} khỏi session`}
+                        title="Xóa item này khỏi session"
                       >
                         <X size={14} />
                       </button>

@@ -1,9 +1,7 @@
-import { useEffect, useState } from 'react'
-import type { CSSProperties, RefObject } from 'react'
-import { Monitor, Smartphone } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
-import cheeseLogo from '../../cheese_icon_transparent.svg'
+import type { RefObject } from 'react'
+import { useNavigate } from 'react-router-dom'
 
+import { getCaptureModeLabel } from '../lib/captureModes'
 import {
   getCaptureRoute,
   getKioskPreviewAspect,
@@ -11,32 +9,36 @@ import {
 } from '../lib/kioskProfiles'
 import type {
   BrowserCaptureSessionState,
-  BoomerangRecordingIndicator,
   CaptureOutcome,
   KioskProfile,
   OperatorSettings,
+  PerformanceAudioState,
   PermissionState,
+  RecordingProgressIndicator,
   SourceDescriptor,
   StreamState,
 } from '../types'
-import { APP_NAME } from '../lib/branding'
-import { resolveBrowserDeviceKind } from '../lib/browserDevice'
-import { BrowserSessionFilmStripRail } from './capture/BrowserSessionFilmStripRail'
+import '../styles/capture-enterprise.css'
 import { BrowserSessionOverlay } from './capture/BrowserSessionOverlay'
-import { CapturePreview } from './capture/CapturePreview'
-import { CapturePreviewTelemetry } from './capture/CapturePreviewTelemetry'
+import {
+  CaptureSessionTraySection,
+  CaptureShellHeader,
+  CaptureStageSection,
+} from './capture/CaptureScreenSections'
 import { CaptureSideRail } from './capture/CaptureSideRail'
+import { useCaptureViewport } from './capture/captureViewport'
 
 interface CaptureScreenProps {
   profile: KioskProfile
   settings: OperatorSettings
   sources: SourceDescriptor[]
+  performanceAudio: PerformanceAudioState
   permissionState: PermissionState
   streamState: StreamState
   lastError: string | null
   isBusy: boolean
   countdownValue: number | null
-  boomerangRecording: BoomerangRecordingIndicator | null
+  recordingProgress: RecordingProgressIndicator | null
   captureOutcome: CaptureOutcome | null
   browserSession: BrowserCaptureSessionState
   previewFrameRef: RefObject<HTMLDivElement | null>
@@ -61,19 +63,17 @@ interface CaptureScreenProps {
   onRejectCaptureOutcome: () => void
 }
 
-type UiDensity = 'roomy' | 'compact' | 'dense'
-type BrowserDeviceKind = 'desktop' | 'mobile'
-
 export function CaptureScreen({
   profile,
   settings,
   sources,
+  performanceAudio,
   permissionState,
   streamState,
   lastError,
   isBusy,
   countdownValue,
-  boomerangRecording,
+  recordingProgress,
   captureOutcome,
   browserSession,
   previewFrameRef,
@@ -96,158 +96,33 @@ export function CaptureScreen({
   onRejectCaptureOutcome,
 }: CaptureScreenProps) {
   const navigate = useNavigate()
-  const [uiDensity, setUiDensity] = useState<UiDensity>('roomy')
-  const [deviceKind, setDeviceKind] = useState<BrowserDeviceKind>('desktop')
+  const { uiDensity, deviceKind } = useCaptureViewport(profile)
 
-  const layout = profile
-  const isPortrait = profile === 'portrait'
   const previewAspect = getKioskPreviewAspect(profile)
-  const captureModeLabel =
-    settings.captureMode === 'photo' ? 'Photo' : 'Boomerang'
+  const captureModeLabel = getCaptureModeLabel(settings.captureMode)
   const sourceUnavailable = streamState === 'missing-device' || sources.length === 0
+  const isPerformanceRecording = recordingProgress?.mode === 'performance'
   const sessionShutterLocked =
     browserSession.status !== 'active' ||
     browserSession.items.length >= browserSession.maxItems
   const shutterDisabled =
-    isBusy ||
+    (isBusy && !isPerformanceRecording) ||
     permissionState !== 'granted' ||
     streamState !== 'live' ||
     sessionShutterLocked
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return
-    }
-
-    const updateViewportContext = () => {
-      setUiDensity(resolveUiDensity(layout, window.innerWidth, window.innerHeight))
-      setDeviceKind(resolveBrowserDeviceKind(window, navigator))
-    }
-
-    updateViewportContext()
-    window.addEventListener('resize', updateViewportContext)
-
-    return () => {
-      window.removeEventListener('resize', updateViewportContext)
-    }
-  }, [layout])
 
   const handleOrientationToggle = () => {
     const newProfile: KioskProfile = profile === 'portrait' ? 'landscape' : 'portrait'
     navigate(getCaptureRoute(newProfile))
   }
-  const OrientationIcon = profile === 'portrait' ? Monitor : Smartphone
-  const orientationHint =
-    profile === 'portrait' ? 'Chuyển sang landscape' : 'Chuyển sang portrait'
-
-  const header = (
-    <header className="capture-shell-header">
-      <Link to="/" className="capture-brand-link">
-        <span className="capture-brand-mark">
-          <img
-            src={cheeseLogo}
-            alt=""
-            className="capture-brand-logo"
-            width={28}
-            height={22}
-          />
-        </span>
-        <span className="capture-brand-stack">
-          <span className="capture-brand-name">{APP_NAME}</span>
-          <span className="capture-brand-note">Capture Console</span>
-        </span>
-      </Link>
-      <button
-        type="button"
-        className="capture-orientation-toggle capture-orientation-toggle--icon-only"
-        onClick={handleOrientationToggle}
-        disabled={isBusy || countdownValue !== null}
-        aria-label={orientationHint}
-        title={orientationHint}
-      >
-        <OrientationIcon size={18} />
-      </button>
-    </header>
-  )
-
-  const stage = (
-    <div className="capture-stage">
-      <div
-        className={`capture-stage-wrapper capture-stage-wrapper--${layout}`}
-        style={{ '--aspect-ratio': isPortrait ? 3 / 4 : 4 / 3 } as CSSProperties}
-      >
-        <div className="capture-stage-meta">
-          <CapturePreviewTelemetry
-            profile={profile}
-            settings={settings}
-            disabled={isBusy || countdownValue !== null}
-            onModeChange={onModeChange}
-            onCountdownChange={onCountdownChange}
-            onSetRotationQuarter={onSetRotationQuarter}
-            onFlipHorizontal={onFlipHorizontal}
-            onFlipVertical={onFlipVertical}
-          />
-        </div>
-
-        <CapturePreview
-          previewAspect={previewAspect}
-          previewFrameRef={previewFrameRef}
-          previewCanvasRef={previewCanvasRef}
-          permissionState={permissionState}
-          streamState={streamState}
-          sourceUnavailable={sourceUnavailable}
-          lastError={lastError}
-          countdownValue={countdownValue}
-          boomerangRecording={boomerangRecording}
-          onRetryPermission={onRetryPermission}
-          onRefreshSources={onRefreshSources}
-        />
-      </div>
-    </div>
-  )
-
-  const portraitTelemetry = (
-    <div className="capture-stage-meta capture-stage-meta--portrait">
-      <CapturePreviewTelemetry
-        profile={profile}
-        settings={settings}
-        disabled={isBusy || countdownValue !== null}
-        onModeChange={onModeChange}
-        onCountdownChange={onCountdownChange}
-        onSetRotationQuarter={onSetRotationQuarter}
-        onFlipHorizontal={onFlipHorizontal}
-        onFlipVertical={onFlipVertical}
-      />
-    </div>
-  )
-
-  const portraitStage = (
-    <div className="capture-stage capture-stage--portrait">
-      <div
-        className="capture-stage-wrapper capture-stage-wrapper--portrait-only"
-        style={{ '--aspect-ratio': 3 / 4 } as CSSProperties}
-      >
-        <CapturePreview
-          previewAspect={previewAspect}
-          previewFrameRef={previewFrameRef}
-          previewCanvasRef={previewCanvasRef}
-          permissionState={permissionState}
-          streamState={streamState}
-          sourceUnavailable={sourceUnavailable}
-          lastError={lastError}
-          countdownValue={countdownValue}
-          boomerangRecording={boomerangRecording}
-          onRetryPermission={onRetryPermission}
-          onRefreshSources={onRefreshSources}
-        />
-      </div>
-    </div>
-  )
 
   const controlDock = (
     <CaptureSideRail
-      layout={layout}
+      layout={profile}
       uiDensity={uiDensity}
+      captureMode={settings.captureMode}
       captureModeLabel={captureModeLabel}
+      recordingMode={recordingProgress?.mode ?? null}
       browserSession={browserSession}
       shutterDisabled={shutterDisabled}
       onOpenSettings={() => navigate(getSettingsRoute(profile))}
@@ -261,14 +136,56 @@ export function CaptureScreen({
   )
 
   const sessionTray = (
-    <BrowserSessionFilmStripRail
+    <CaptureSessionTraySection
       session={browserSession}
-      layout={layout}
+      layout={profile}
       uiDensity={uiDensity}
       canRemoveItems={
         browserSession.status === 'active' && !isBusy && countdownValue === null
       }
       onRemoveItem={onRemoveBrowserSessionItem}
+    />
+  )
+
+  const stage = (
+    <CaptureStageSection
+      variant={profile}
+      profile={profile}
+      settings={settings}
+      previewAspect={previewAspect}
+      previewFrameRef={previewFrameRef}
+      previewCanvasRef={previewCanvasRef}
+      permissionState={permissionState}
+      streamState={streamState}
+      sourceUnavailable={sourceUnavailable}
+      lastError={lastError}
+      countdownValue={countdownValue}
+      recordingProgress={recordingProgress}
+      performanceNotice={
+        settings.captureMode === 'performance' && performanceAudio.status !== 'paired'
+          ? performanceAudio.message
+          : null
+      }
+      performanceNoticeTone={performanceAudio.status === 'paired' ? 'neutral' : 'warn'}
+      disabled={isBusy || countdownValue !== null}
+      modeLocked={browserSession.status !== 'idle'}
+      performanceEnabled={performanceAudio.recordingSupported}
+      onRetryPermission={onRetryPermission}
+      onRefreshSources={onRefreshSources}
+      onModeChange={onModeChange}
+      onCountdownChange={onCountdownChange}
+      onSetRotationQuarter={onSetRotationQuarter}
+      onFlipHorizontal={onFlipHorizontal}
+      onFlipVertical={onFlipVertical}
+    />
+  )
+
+  const header = (
+    <CaptureShellHeader
+      profile={profile}
+      isBusy={isBusy}
+      countdownValue={countdownValue}
+      onToggleOrientation={handleOrientationToggle}
     />
   )
 
@@ -278,7 +195,7 @@ export function CaptureScreen({
         className={[
           'capture-panel',
           'capture-panel--enterprise',
-          `capture-panel--${layout}`,
+          `capture-panel--${profile}`,
         ].join(' ')}
       >
         {profile === 'portrait' ? (
@@ -287,8 +204,7 @@ export function CaptureScreen({
             data-device={deviceKind}
           >
             {header}
-            {portraitTelemetry}
-            {portraitStage}
+            {stage}
             {controlDock}
             {sessionTray}
           </div>
@@ -317,36 +233,4 @@ export function CaptureScreen({
       />
     </section>
   )
-}
-
-function resolveUiDensity(
-  layout: KioskProfile,
-  viewportWidth: number,
-  viewportHeight: number,
-): UiDensity {
-  if (layout === 'portrait') {
-    if (viewportHeight < 760 || viewportWidth < 420) {
-      return 'dense'
-    }
-
-    if (
-      viewportHeight < 980 ||
-      viewportWidth < 560 ||
-      viewportHeight / viewportWidth > 2.18
-    ) {
-      return 'compact'
-    }
-
-    return 'roomy'
-  }
-
-  if (viewportHeight < 560 || viewportWidth < 900) {
-    return 'dense'
-  }
-
-  if (viewportHeight < 760 || viewportWidth < 1180) {
-    return 'compact'
-  }
-
-  return 'roomy'
 }

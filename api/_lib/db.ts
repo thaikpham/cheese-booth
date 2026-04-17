@@ -93,7 +93,7 @@ export async function ensureSchema(): Promise<void> {
       tx`
         CREATE TABLE IF NOT EXISTS capture_downloads (
           capture_id uuid PRIMARY KEY,
-          kind text NOT NULL CHECK (kind IN ('photo', 'boomerang')),
+          kind text NOT NULL CHECK (kind IN ('photo', 'boomerang', 'performance')),
           storage_key text NOT NULL UNIQUE,
           mime_type text NOT NULL,
           extension text NOT NULL,
@@ -116,6 +116,15 @@ export async function ensureSchema(): Promise<void> {
       tx`
         CREATE INDEX IF NOT EXISTS capture_downloads_status_expires_at_idx
         ON capture_downloads (status, expires_at)
+      `,
+      tx`
+        ALTER TABLE capture_downloads
+        DROP CONSTRAINT IF EXISTS capture_downloads_kind_check
+      `,
+      tx`
+        ALTER TABLE capture_downloads
+        ADD CONSTRAINT capture_downloads_kind_check
+        CHECK (kind IN ('photo', 'boomerang', 'performance'))
       `,
       tx`
         CREATE TABLE IF NOT EXISTS capture_share_sessions (
@@ -142,7 +151,7 @@ export async function ensureSchema(): Promise<void> {
           capture_id uuid PRIMARY KEY,
           session_id uuid NOT NULL REFERENCES capture_share_sessions (session_id),
           sequence integer NOT NULL,
-          kind text NOT NULL CHECK (kind IN ('photo', 'boomerang')),
+          kind text NOT NULL CHECK (kind IN ('photo', 'boomerang', 'performance')),
           storage_key text NOT NULL UNIQUE,
           mime_type text NOT NULL,
           extension text NOT NULL,
@@ -157,6 +166,15 @@ export async function ensureSchema(): Promise<void> {
       tx`
         CREATE INDEX IF NOT EXISTS capture_share_session_items_session_sequence_idx
         ON capture_share_session_items (session_id, sequence)
+      `,
+      tx`
+        ALTER TABLE capture_share_session_items
+        DROP CONSTRAINT IF EXISTS capture_share_session_items_kind_check
+      `,
+      tx`
+        ALTER TABLE capture_share_session_items
+        ADD CONSTRAINT capture_share_session_items_kind_check
+        CHECK (kind IN ('photo', 'boomerang', 'performance'))
       `,
     ])
   })()

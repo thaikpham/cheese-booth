@@ -12,12 +12,16 @@ Read this before changing routes, boot flow, fullscreen/bootstrap behavior, prof
 
 - `src/main.tsx`
 - `src/App.tsx`
+- `src/app/useDeviceBasedProfile.ts`
+- `src/app/KioskShell.tsx`
+- `src/app/KioskExperience.tsx`
 - `src/hooks/useKioskController.ts`
 - `src/hooks/useKioskBootstrap.ts`
 - `src/hooks/useKioskFullscreen.ts`
 - `src/lib/browserDevice.ts`
 - `src/lib/kioskProfiles.ts`
 - `src/lib/cloudShare.ts`
+- `src/lib/cloudShare/*`
 - `api/*`
 
 ## Runtime Model
@@ -75,7 +79,7 @@ The main kiosk boot flow is:
 
 1. `App` chooses the default profile via `useDeviceBasedProfile`.
 2. `KioskShell` validates the `:profile` route param.
-3. `ProfiledKioskExperience` calls `useKioskController(profile)`.
+3. `KioskExperience` calls `useKioskController(profile)`.
 4. `useOperatorSettings` loads profile-scoped operator settings from localStorage.
 5. `useKioskBootstrap` calls `openCapture()` once settings are ready.
 6. `useCameraSession` probes permission and enumerates/selects devices.
@@ -93,6 +97,7 @@ Responsibilities:
 
 - load/save profile-scoped settings from browser localStorage
 - normalize settings so profile constraints remain valid
+- persist the selected HDMI audio source for `60s Performance`
 - persist changes automatically after initialization
 
 ### Camera session
@@ -105,8 +110,10 @@ Responsibilities:
 - permission probe
 - device enumeration
 - preferred device selection
+- HDMI audio source enumeration + auto-pairing
 - live `MediaStream` lifecycle
 - missing-device/error handling
+- native MP4 performance capability reporting
 
 ### Preview rendering
 
@@ -128,16 +135,23 @@ Owned by:
 Responsibilities:
 
 - countdown and shutter flow
-- boomerang recording progress
+- boomerang/performance recording progress
 - review-before-commit flow
 - session item staging and approval
 - session finalization to cloud share
 - retry/reset/cancel handling
 
+Important rule:
+
+- `performance` sessions are single-clip sessions and upload one `.mp4` item.
+
 ### Cloud-share API client
 
 Owned by:
 - `src/lib/cloudShare.ts`
+- `src/lib/cloudShare/sessionClient.ts`
+- `src/lib/cloudShare/legacyClient.ts`
+- `src/lib/cloudShare/shared.ts`
 
 Responsibilities:
 
@@ -145,6 +159,7 @@ Responsibilities:
 - upload to presigned R2 URLs
 - session gallery fetches
 - local/runtime-specific error messaging
+- separation between current session-share flow and legacy single-capture compatibility helpers
 
 ## Styling Boundary
 
@@ -157,10 +172,10 @@ Typography and global primitives:
 
 Page/domain styles:
 
-- landing: `src/styles/landing-page.css`
-- capture kiosk: `src/styles/capture-enterprise.css`, `src/styles/capture.css`
-- settings: `src/styles/settings-dashboard.css`
-- session gallery: `src/styles/session-gallery.css`
+- landing: imported by `src/components/LandingPage.tsx`
+- capture kiosk: imported by `src/components/CaptureScreen.tsx`
+- settings: imported by `src/components/SettingsDashboard.tsx`
+- session gallery: imported by `src/components/SessionGalleryPage.tsx`
 
 Typography note:
 
@@ -171,10 +186,10 @@ Typography note:
 If you are changing:
 
 - route ownership or redirects:
-  edit `src/App.tsx` and update this doc
+  edit `src/App.tsx`, `src/app/KioskShell.tsx`, or `src/app/KioskExperience.tsx` and update this doc
 - default profile/device heuristics:
-  edit `src/lib/browserDevice.ts` and its tests
+  edit `src/lib/browserDevice.ts`, `src/app/useDeviceBasedProfile.ts`, and their tests
 - fullscreen/bootstrap behavior:
   edit `useKioskBootstrap.ts` or `useKioskFullscreen.ts`
 - frontend/backend integration URLs or request semantics:
-  edit `src/lib/cloudShare.ts` and the matching `api/*` route docs
+  edit `src/lib/cloudShare/*` and the matching `api/*` route docs

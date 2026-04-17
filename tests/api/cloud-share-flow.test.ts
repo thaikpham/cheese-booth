@@ -9,7 +9,7 @@ import {
 
 interface MockCaptureRecord {
   capture_id: string
-  kind: 'photo' | 'boomerang'
+  kind: 'photo' | 'boomerang' | 'performance'
   storage_key: string
   mime_type: string
   extension: string
@@ -44,7 +44,7 @@ describe('cloud share API smoke flow', () => {
     vi.doMock('../../api/_lib/db.js', () => ({
       createPendingCapture: vi.fn(async (input: {
         captureId: string
-        kind: 'photo' | 'boomerang'
+        kind: 'photo' | 'boomerang' | 'performance'
         storageKey: string
         mimeType: string
         extension: string

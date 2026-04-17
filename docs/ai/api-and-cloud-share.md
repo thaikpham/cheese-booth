@@ -17,6 +17,9 @@ Read this before changing:
 ## Canonical Modules
 
 - `src/lib/cloudShare.ts`
+- `src/lib/cloudShare/sessionClient.ts`
+- `src/lib/cloudShare/legacyClient.ts`
+- `src/lib/cloudShare/shared.ts`
 - `api/_lib/env.ts`
 - `api/_lib/http.ts`
 - `api/_lib/db.ts`
@@ -106,12 +109,23 @@ Current constraints:
 
 - `photo` -> JPEG only
 - `boomerang` -> MP4 only
+- `performance` -> MP4 only, up to 150 MB, max 2048 px on each edge
 - session limit -> 4 items
+- `performance` session limit -> exactly 1 item at sequence `1`
 
 ## Frontend Caller Map
 
 Primary frontend caller:
 - `src/lib/cloudShare.ts`
+
+Client split:
+
+- `sessionClient.ts`
+  current browser-session QR/gallery flow
+- `legacyClient.ts`
+  compatibility-only single-capture flow
+- `shared.ts`
+  shared fetch/error/upload primitives
 
 Current main session flow calls:
 
@@ -187,6 +201,7 @@ Depends on:
 - origin check
 - payload validation
 - session item limit and sequence validation
+- special-case validation so `performance` sessions only accept one MP4 clip
 - Postgres insert
 - R2 signer
 
@@ -238,6 +253,10 @@ Returns / side effects:
 - session metadata
 - ordered gallery items
 - per-item `previewUrl` and `downloadUrl` that point back to `api/capture-sessions/media`
+
+Behavior note:
+
+- gallery/media payloads now include `kind: 'performance'` for single-clip MP4 sessions without changing the public wire shape.
 
 Related frontend caller:
 - `fetchCloudCaptureSessionGallery()` in `src/lib/cloudShare.ts`

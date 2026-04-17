@@ -1,21 +1,28 @@
 import { badRequest } from './http.js'
 
-export type CaptureKind = 'photo' | 'boomerang'
+export type CaptureKind = 'photo' | 'boomerang' | 'performance'
 
 const MIN_CAPTURE_EDGE = 240
 
 export const CAPTURE_CONSTRAINTS = {
   photo: {
-    mimeTypes: ['image/jpeg'],
-    extensions: ['jpg', 'jpeg'],
-    maxByteSize: 12 * 1024 * 1024,
-    maxWidth: 4096,
-    maxHeight: 4096,
+    mimeTypes: ['image/jpeg', 'image/png'],
+    extensions: ['jpg', 'jpeg', 'png'],
+    maxByteSize: 50 * 1024 * 1024,
+    maxWidth: 8192,
+    maxHeight: 8192,
   },
   boomerang: {
     mimeTypes: ['video/mp4'],
     extensions: ['mp4'],
     maxByteSize: 25 * 1024 * 1024,
+    maxWidth: 2048,
+    maxHeight: 2048,
+  },
+  performance: {
+    mimeTypes: ['video/mp4'],
+    extensions: ['mp4'],
+    maxByteSize: 150 * 1024 * 1024,
     maxWidth: 2048,
     maxHeight: 2048,
   },
@@ -31,7 +38,7 @@ export interface ValidatedCapturePayload {
 }
 
 export function parseCaptureKind(value?: string): CaptureKind {
-  if (value === 'photo' || value === 'boomerang') {
+  if (value === 'photo' || value === 'boomerang' || value === 'performance') {
     return value
   }
 
@@ -140,4 +147,3 @@ export function buildCaptureStorageKey(
 
   return `captures/${kind}/${dateFolder}/${captureId}.${extension}`
 }
-

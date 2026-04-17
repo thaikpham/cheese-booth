@@ -7,7 +7,12 @@ import {
   fetchCloudCaptureSessionGallery,
   type CloudCaptureSessionGalleryResponse,
 } from '../lib/cloudShare'
+import {
+  getCaptureModeBadgeLabel,
+  getCaptureModeLabel,
+} from '../lib/captureModes'
 import { APP_NAME, APP_SUBTITLE } from '../lib/branding'
+import '../styles/session-gallery.css'
 
 export function SessionGalleryPage() {
   const { token = '' } = useParams()
@@ -118,16 +123,18 @@ export function SessionGalleryPage() {
           <section className="session-gallery-content">
             <div className="session-gallery-hero">
               <p className="session-gallery-eyebrow">Session ready</p>
-              <h1>Tải ảnh vừa chụp</h1>
+              <h1>Tải media vừa chụp</h1>
               <p className="session-gallery-copy">
                 Session này có {gallery.items.length} media. Bạn có thể xem nhanh và
-                tải từng ảnh hoặc boomerang xuống điện thoại.
+                tải từng file về điện thoại. Với 60s Performance, gallery sẽ trả về
+                clip MP4 hoàn chỉnh.
               </p>
             </div>
 
             <div className="session-gallery-grid">
               {gallery.items.map((item) => {
                 const isPhoto = item.kind === 'photo'
+                const isPerformance = item.kind === 'performance'
 
                 return (
                   <article key={item.captureId} className="session-gallery-card">
@@ -143,9 +150,9 @@ export function SessionGalleryPage() {
                           src={item.previewUrl}
                           className="session-gallery-video"
                           controls
-                          autoPlay
-                          muted
-                          loop
+                          autoPlay={!isPerformance}
+                          muted={!isPerformance}
+                          loop={!isPerformance}
                           playsInline
                         />
                       )}
@@ -157,13 +164,21 @@ export function SessionGalleryPage() {
                           #{String(item.sequence).padStart(2, '0')}
                         </span>
                         <span className="session-gallery-kind">
-                          {isPhoto ? 'PHOTO' : 'BOOMERANG'}
+                          {getCaptureModeBadgeLabel(item.kind)}
                         </span>
                       </div>
 
                       <p className="session-gallery-card-meta">
                         {item.width} × {item.height} • {item.extension.toUpperCase()}
                       </p>
+
+                      {!isPhoto ? (
+                        <p className="session-gallery-card-meta">
+                          {isPerformance
+                            ? 'Performance MP4 có thể phát trực tiếp hoặc tải về.'
+                            : `${getCaptureModeLabel(item.kind)} preview sẵn sàng.`}
+                        </p>
+                      ) : null}
 
                       <a
                         className="button primary session-gallery-download"
@@ -172,7 +187,7 @@ export function SessionGalleryPage() {
                         rel="noreferrer"
                       >
                         <Download size={18} />
-                        Tải xuống
+                        {isPerformance ? 'Tải MP4' : 'Tải xuống'}
                       </a>
                     </div>
                   </article>

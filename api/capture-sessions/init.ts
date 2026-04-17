@@ -23,6 +23,7 @@ import { createSignedUploadUrl } from '../_lib/r2.js'
 export const runtime = 'nodejs'
 
 const MAX_SESSION_ITEMS = 4
+const PERFORMANCE_SESSION_ITEMS = 1
 
 interface InitCaptureSessionRequestBody {
   items?: Array<{
@@ -110,6 +111,20 @@ export async function POST(request: Request): Promise<Response> {
       }
     })
 
+    const containsPerformance = items.some((item) => item.kind === 'performance')
+
+    if (
+      containsPerformance &&
+      (items.length !== PERFORMANCE_SESSION_ITEMS ||
+        items[0]?.kind !== 'performance' ||
+        items[0]?.sequence !== 1)
+    ) {
+      badRequest(
+        'Session performance chỉ hỗ trợ đúng 1 clip MP4 ở sequence 1.',
+        'capture_session_performance_limit_exceeded',
+      )
+    }
+
     await createPendingCaptureSession({
       sessionId,
       expiresAt,
@@ -140,4 +155,3 @@ export async function POST(request: Request): Promise<Response> {
     )
   }
 }
-

@@ -1,4 +1,8 @@
-import type { BoomerangRecordingIndicator, TransformSettings } from '../types'
+import type {
+  KioskProfile,
+  RecordingProgressIndicator,
+  TransformSettings,
+} from '../types'
 import { createH264Mp4Encoder } from './h264Mp4Encoder'
 
 const PHOTO_LANDSCAPE_RATIO = 4 / 3
@@ -7,6 +11,15 @@ export const BOOMERANG_DURATION_MS = 3_000
 const BOOMERANG_FPS = 15
 const BOOMERANG_MAX_LONG_EDGE = 1920
 const BOOMERANG_H264_BITRATE_KBPS = 8000
+export const PERFORMANCE_MAX_DURATION_MS = 60_000
+const PERFORMANCE_FPS = 30
+const PERFORMANCE_VIDEO_BITS_PER_SECOND = 16_000_000
+const PERFORMANCE_AUDIO_BITS_PER_SECOND = 192_000
+const PERFORMANCE_MIME_TYPE_CANDIDATES = [
+  'video/mp4;codecs="avc1.4d002a,mp4a.40.2"',
+  'video/mp4;codecs="avc1.42E01E,mp4a.40.2"',
+  'video/mp4',
+] as const
 
 export interface RenderedCapture {
   blob: Blob
@@ -22,8 +35,32 @@ type SampledFrame = CanvasImageSource & {
 }
 
 interface RenderBoomerangOptions {
-  onProgress?: (progress: BoomerangRecordingIndicator) => void
+  onProgress?: (progress: RecordingProgressIndicator) => void
 }
+
+export interface PerformanceRecordingSupport {
+  supported: boolean
+  mimeType: string | null
+}
+
+export interface PerformanceRecordingController {
+  stop: () => void
+  result: Promise<RenderedCapture>
+}
+
+interface DisposablePhotoSource {
+  source: CanvasImageSource
+  width: number
+  height: number
+  release: () => void
+}
+
+interface ImageCaptureLike {
+  takePhoto?: () => Promise<Blob>
+  grabFrame?: () => Promise<ImageBitmap>
+}
+
+type ImageCaptureCtor = new (track: MediaStreamTrack) => ImageCaptureLike
 
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -52,6 +89,101 @@ function toBlob(
   })
 }
 
+function getAttachedVideoTrack(video: HTMLVideoElement): MediaStreamTrack | null {
+  const stream = video.srcObject
+
+  if (!(stream instanceof MediaStream)) {
+    return null
+  }
+
+  return stream.getVideoTracks()[0] ?? null
+}
+
+async function decodeBlobToPhotoSource(blob: Blob): Promise<DisposablePhotoSource> {
+  if (typeof createImageBitmap === 'function') {
+    const bitmap = await createImageBitmap(blob)
+
+    return {
+      source: bitmap,
+      width: bitmap.width,
+      height: bitmap.height,
+      release: () => {
+        bitmap.close?.()
+      },
+    }
+  }
+
+  const image = new Image()
+  const objectUrl = window.URL.createObjectURL(blob)
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve()
+      image.onerror = () => reject(new Error('Không thể decode still photo blob.'))
+      image.src = objectUrl
+    })
+  } catch (error) {
+    window.URL.revokeObjectURL(objectUrl)
+    throw error
+  }
+
+  return {
+    source: image,
+    width: image.naturalWidth,
+    height: image.naturalHeight,
+    release: () => {
+      window.URL.revokeObjectURL(objectUrl)
+    },
+  }
+}
+
+async function captureHighResolutionPhotoSource(
+  video: HTMLVideoElement,
+): Promise<DisposablePhotoSource | null> {
+  const videoTrack = getAttachedVideoTrack(video)
+
+  if (!videoTrack) {
+    return null
+  }
+
+  const ImageCaptureClass = (
+    globalThis as typeof globalThis & { ImageCapture?: ImageCaptureCtor }
+  ).ImageCapture
+
+  if (!ImageCaptureClass) {
+    return null
+  }
+
+  const imageCapture = new ImageCaptureClass(videoTrack)
+
+  if (typeof imageCapture.takePhoto === 'function') {
+    try {
+      return await decodeBlobToPhotoSource(await imageCapture.takePhoto())
+    } catch {
+      // Fall through to grabFrame/video snapshot when still capture is unsupported.
+    }
+  }
+
+  if (typeof imageCapture.grabFrame === 'function') {
+    try {
+      const frame = await imageCapture.grabFrame()
+
+      return {
+        source: frame,
+        width: frame.width,
+        height: frame.height,
+        release: () => {
+          frame.close?.()
+        },
+      }
+    } catch {
+      return null
+    }
+  }
+
+  return null
+}
+
 export function normalizeRotationQuarter(rotationQuarter: number): 0 | 1 | 2 | 3 {
   const normalized = ((rotationQuarter % 4) + 4) % 4
 
@@ -60,6 +192,37 @@ export function normalizeRotationQuarter(rotationQuarter: number): 0 | 1 | 2 | 3
   }
 
   return 0
+}
+
+export function getPerformanceOutputSize(
+  profile: KioskProfile,
+): { width: number; height: number } {
+  return profile === 'portrait'
+    ? { width: 1152, height: 2048 }
+    : { width: 2048, height: 1152 }
+}
+
+export function getSupportedPerformanceRecorderMimeType(): string | null {
+  if (typeof MediaRecorder === 'undefined') {
+    return null
+  }
+
+  const supported = PERFORMANCE_MIME_TYPE_CANDIDATES.find((candidate) =>
+    typeof MediaRecorder.isTypeSupported === 'function'
+      ? MediaRecorder.isTypeSupported(candidate)
+      : candidate === 'video/mp4',
+  )
+
+  return supported ?? null
+}
+
+export function getPerformanceRecordingSupport(): PerformanceRecordingSupport {
+  const mimeType = getSupportedPerformanceRecorderMimeType()
+
+  return {
+    supported: !!mimeType,
+    mimeType,
+  }
 }
 
 function isPortraitRotation(rotationQuarter: number): boolean {
@@ -228,9 +391,13 @@ export async function renderPhotoFromVideo(
   transform: TransformSettings,
   outputAspectRatio: number,
 ): Promise<RenderedCapture> {
+  const highResolutionSource = await captureHighResolutionPhotoSource(video)
+  const source = highResolutionSource?.source ?? video
+  const sourceWidth = highResolutionSource?.width ?? video.videoWidth
+  const sourceHeight = highResolutionSource?.height ?? video.videoHeight
   const output = getLargestAspectRect(
-    video.videoWidth,
-    video.videoHeight,
+    sourceWidth,
+    sourceHeight,
     transform.rotationQuarter,
     outputAspectRatio,
   )
@@ -243,26 +410,32 @@ export async function renderPhotoFromVideo(
 
   canvas.width = output.width
   canvas.height = output.height
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
 
   drawTransformedCover(
     ctx,
-    video,
-    video.videoWidth,
-    video.videoHeight,
+    source,
+    sourceWidth,
+    sourceHeight,
     output.width,
     output.height,
     transform,
   )
 
-  const blob = await toBlob(canvas, 'image/jpeg', 1.0)
+  try {
+    const blob = await toBlob(canvas, 'image/png')
 
-  return {
-    blob,
-    width: output.width,
-    height: output.height,
-    mimeType: 'image/jpeg',
-    extension: 'jpg',
-    posterBlob: blob,
+    return {
+      blob,
+      width: output.width,
+      height: output.height,
+      mimeType: 'image/png',
+      extension: 'png',
+      posterBlob: blob,
+    }
+  } finally {
+    highResolutionSource?.release()
   }
 }
 
@@ -323,8 +496,9 @@ export async function renderBoomerangFromVideo(
   const sampleStart = performance.now()
 
   onProgress?.({
+    mode: 'boomerang',
     elapsedMs: 0,
-    totalMs: BOOMERANG_DURATION_MS,
+    maxDurationMs: BOOMERANG_DURATION_MS,
     remainingMs: BOOMERANG_DURATION_MS,
     progress: 0,
   })
@@ -355,8 +529,9 @@ export async function renderBoomerangFromVideo(
     )
 
     onProgress?.({
+      mode: 'boomerang',
       elapsedMs,
-      totalMs: BOOMERANG_DURATION_MS,
+      maxDurationMs: BOOMERANG_DURATION_MS,
       remainingMs: Math.max(0, BOOMERANG_DURATION_MS - elapsedMs),
       progress: Math.min(1, elapsedMs / BOOMERANG_DURATION_MS),
     })
@@ -439,5 +614,220 @@ export async function renderBoomerangFromVideo(
   } finally {
     sampledFrames.forEach((frame) => frame.close?.())
     encoder?.delete()
+  }
+}
+
+async function requestPerformanceAudioStream(
+  audioDeviceId: string | null,
+): Promise<MediaStream | null> {
+  if (!audioDeviceId || typeof navigator === 'undefined') {
+    return null
+  }
+
+  return navigator.mediaDevices.getUserMedia({
+    audio: {
+      deviceId: { exact: audioDeviceId },
+      channelCount: { ideal: 2 },
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+    },
+    video: false,
+  })
+}
+
+function stopMediaStream(stream: MediaStream | null): void {
+  stream?.getTracks().forEach((track) => track.stop())
+}
+
+export function startPerformanceRecording({
+  profile,
+  video,
+  transform,
+  audioDeviceId,
+  onProgress,
+  onAudioFallback,
+}: {
+  profile: KioskProfile
+  video: HTMLVideoElement
+  transform: TransformSettings
+  audioDeviceId: string | null
+  onProgress?: (progress: RecordingProgressIndicator) => void
+  onAudioFallback?: () => void
+}): PerformanceRecordingController {
+  const mimeType = getSupportedPerformanceRecorderMimeType()
+
+  if (!mimeType) {
+    throw new Error(
+      'Runtime hiện tại không hỗ trợ quay MP4 native cho 60s Performance.',
+    )
+  }
+
+  const output = getPerformanceOutputSize(profile)
+  const canvas = document.createElement('canvas')
+  const context = canvas.getContext('2d')
+
+  if (!context) {
+    throw new Error('Không thể khởi tạo canvas performance recorder.')
+  }
+
+  canvas.width = output.width
+  canvas.height = output.height
+
+  let stopped = false
+  let drawFrameId = 0
+  let stopTimer = 0
+  let audioStream: MediaStream | null = null
+  let canvasStream: MediaStream | null = null
+  let recordingStream: MediaStream | null = null
+
+  const stop = () => {
+    if (stopped) {
+      return
+    }
+
+    stopped = true
+    window.clearTimeout(stopTimer)
+    window.cancelAnimationFrame(drawFrameId)
+    recorder?.stop()
+  }
+
+  let recorder: MediaRecorder | null = null
+
+  const result = (async () => {
+    try {
+      try {
+        audioStream = await requestPerformanceAudioStream(audioDeviceId)
+      } catch {
+        audioStream = null
+        onAudioFallback?.()
+      }
+
+      drawTransformedCover(
+        context,
+        video,
+        video.videoWidth,
+        video.videoHeight,
+        output.width,
+        output.height,
+        transform,
+      )
+
+      canvasStream = canvas.captureStream(PERFORMANCE_FPS)
+      const [videoTrack] = canvasStream.getVideoTracks()
+
+      if (!videoTrack) {
+        throw new Error('Không lấy được video track cho performance recorder.')
+      }
+
+      recordingStream = new MediaStream([videoTrack])
+      const [audioTrack] = audioStream?.getAudioTracks() ?? []
+
+      if (audioTrack) {
+        recordingStream.addTrack(audioTrack)
+      }
+
+      const startedAt = performance.now()
+      const chunks: BlobPart[] = []
+
+      recorder = new MediaRecorder(recordingStream, {
+        mimeType,
+        videoBitsPerSecond: PERFORMANCE_VIDEO_BITS_PER_SECOND,
+        audioBitsPerSecond: audioTrack ? PERFORMANCE_AUDIO_BITS_PER_SECOND : undefined,
+      })
+
+      const resultBlob = new Promise<Blob>((resolve, reject) => {
+        recorder?.addEventListener('dataavailable', (event) => {
+          if (event.data.size > 0) {
+            chunks.push(event.data)
+          }
+        })
+        recorder?.addEventListener('stop', () => {
+          if (chunks.length === 0) {
+            reject(new Error('Performance recorder không tạo ra dữ liệu MP4.'))
+            return
+          }
+
+          resolve(new Blob(chunks, { type: 'video/mp4' }))
+        })
+        recorder?.addEventListener('error', () => {
+          reject(
+            new Error('Performance recorder gặp lỗi không xác định.'),
+          )
+        })
+      })
+
+      const draw = () => {
+        drawTransformedCover(
+          context,
+          video,
+          video.videoWidth,
+          video.videoHeight,
+          output.width,
+          output.height,
+          transform,
+        )
+
+        const elapsedMs = Math.min(
+          PERFORMANCE_MAX_DURATION_MS,
+          Math.max(0, performance.now() - startedAt),
+        )
+
+        onProgress?.({
+          mode: 'performance',
+          elapsedMs,
+          maxDurationMs: PERFORMANCE_MAX_DURATION_MS,
+          remainingMs: Math.max(0, PERFORMANCE_MAX_DURATION_MS - elapsedMs),
+          progress: Math.min(1, elapsedMs / PERFORMANCE_MAX_DURATION_MS),
+        })
+
+        if (!stopped) {
+          drawFrameId = window.requestAnimationFrame(draw)
+        }
+      }
+
+      onProgress?.({
+        mode: 'performance',
+        elapsedMs: 0,
+        maxDurationMs: PERFORMANCE_MAX_DURATION_MS,
+        remainingMs: PERFORMANCE_MAX_DURATION_MS,
+        progress: 0,
+      })
+
+      recorder.start()
+      draw()
+      stopTimer = window.setTimeout(stop, PERFORMANCE_MAX_DURATION_MS)
+
+      const blob = await resultBlob
+      const posterBlob = await toBlob(canvas, 'image/jpeg', 0.92)
+
+      onProgress?.({
+        mode: 'performance',
+        elapsedMs: PERFORMANCE_MAX_DURATION_MS,
+        maxDurationMs: PERFORMANCE_MAX_DURATION_MS,
+        remainingMs: 0,
+        progress: 1,
+      })
+
+      return {
+        blob,
+        width: output.width,
+        height: output.height,
+        mimeType: 'video/mp4',
+        extension: 'mp4',
+        posterBlob,
+      }
+    } finally {
+      window.clearTimeout(stopTimer)
+      window.cancelAnimationFrame(drawFrameId)
+      stopMediaStream(recordingStream)
+      stopMediaStream(canvasStream)
+      stopMediaStream(audioStream)
+    }
+  })()
+
+  return {
+    stop,
+    result,
   }
 }

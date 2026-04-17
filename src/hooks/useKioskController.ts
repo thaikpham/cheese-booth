@@ -24,6 +24,8 @@ export function useKioskController(profile: KioskProfile) {
 
   const {
     sources,
+    audioSources,
+    performanceAudio,
     cameraSession,
     setCameraSession,
     openCapture,
@@ -39,7 +41,7 @@ export function useKioskController(profile: KioskProfile) {
   const {
     isBusy,
     countdownValue,
-    boomerangRecording,
+    recordingProgress,
     captureOutcome,
     browserSession,
     handleShutter,
@@ -58,6 +60,7 @@ export function useKioskController(profile: KioskProfile) {
     toggleFlipHorizontal,
     toggleFlipVertical,
     setDevice,
+    setAudioDevice,
   } = useCaptureActions({
     profile,
     settings,
@@ -71,10 +74,12 @@ export function useKioskController(profile: KioskProfile) {
     settings,
     settingsReady,
     sources,
+    audioSources,
+    performanceAudio,
     cameraSession,
     isBusy,
     countdownValue,
-    boomerangRecording,
+    recordingProgress,
     captureOutcome,
     browserSession,
     previewFrameRef,
@@ -99,5 +104,6 @@ export function useKioskController(profile: KioskProfile) {
     toggleFlipHorizontal,
     toggleFlipVertical,
     setDevice,
+    setAudioDevice,
   }
 }

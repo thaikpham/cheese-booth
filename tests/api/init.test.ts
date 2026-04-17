@@ -20,7 +20,7 @@ describe('api/captures/init', () => {
     resetCloudShareEnv()
   })
 
-  it('accepts a valid booth photo payload', async () => {
+  it('accepts a valid booth photo payload as PNG', async () => {
     const createPendingCapture = vi.fn(async () => undefined)
     const createSignedUploadUrl = vi.fn(async (storageKey: string, mimeType: string) => ({
       url: `https://upload.example/${storageKey}`,
@@ -43,11 +43,11 @@ describe('api/captures/init', () => {
         origin: 'https://cheesebooth.vercel.app',
         body: {
           kind: 'photo',
-          mimeType: 'image/jpeg',
-          extension: 'jpg',
-          byteSize: 2_400_000,
-          width: 1600,
-          height: 1200,
+          mimeType: 'image/png',
+          extension: 'png',
+          byteSize: 14_400_000,
+          width: 4096,
+          height: 3072,
         },
       }),
     )
@@ -84,8 +84,8 @@ describe('api/captures/init', () => {
         origin: 'https://cheesebooth.vercel.app',
         body: {
           kind: 'photo',
-          mimeType: 'image/png',
-          extension: 'png',
+          mimeType: 'image/webp',
+          extension: 'webp',
           byteSize: 512_000,
           width: 1600,
           height: 1200,

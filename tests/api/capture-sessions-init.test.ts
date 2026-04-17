@@ -46,11 +46,11 @@ describe('api/capture-sessions/init', () => {
             {
               sequence: 1,
               kind: 'photo',
-              mimeType: 'image/jpeg',
-              extension: 'jpg',
-              byteSize: 2_400_000,
-              width: 1600,
-              height: 1200,
+              mimeType: 'image/png',
+              extension: 'png',
+              byteSize: 14_400_000,
+              width: 4096,
+              height: 3072,
             },
             {
               sequence: 2,
@@ -117,5 +117,77 @@ describe('api/capture-sessions/init', () => {
     expect(response.status).toBe(400)
     expect(payload.code).toBe('capture_session_item_limit_exceeded')
   })
-})
 
+  it('accepts a single performance clip and rejects mixed performance sessions', async () => {
+    const createPendingCaptureSession = vi.fn(async () => undefined)
+    const createSignedUploadUrl = vi.fn(async (storageKey: string, mimeType: string) => ({
+      url: `https://upload.example/${storageKey}`,
+      method: 'PUT' as const,
+      headers: {
+        'Content-Type': mimeType,
+      },
+    }))
+
+    vi.doMock('../../api/_lib/db.js', () => ({
+      createPendingCaptureSession,
+    }))
+    vi.doMock('../../api/_lib/r2.js', () => ({
+      createSignedUploadUrl,
+    }))
+
+    const { POST } = await import('../../api/capture-sessions/init.ts')
+
+    const acceptedResponse = await POST(
+      createJsonRequest('https://cheesebooth.vercel.app/api/capture-sessions/init', {
+        origin: 'https://cheesebooth.vercel.app',
+        body: {
+          items: [
+            {
+              sequence: 1,
+              kind: 'performance',
+              mimeType: 'video/mp4',
+              extension: 'mp4',
+              byteSize: 80_000_000,
+              width: 2048,
+              height: 1152,
+            },
+          ],
+        },
+      }),
+    )
+
+    expect(acceptedResponse.status).toBe(200)
+
+    const rejectedResponse = await POST(
+      createJsonRequest('https://cheesebooth.vercel.app/api/capture-sessions/init', {
+        origin: 'https://cheesebooth.vercel.app',
+        body: {
+          items: [
+            {
+              sequence: 1,
+              kind: 'performance',
+              mimeType: 'video/mp4',
+              extension: 'mp4',
+              byteSize: 80_000_000,
+              width: 2048,
+              height: 1152,
+            },
+            {
+              sequence: 2,
+              kind: 'photo',
+              mimeType: 'image/png',
+              extension: 'png',
+              byteSize: 1_200_000,
+              width: 1600,
+              height: 1200,
+            },
+          ],
+        },
+      }),
+    )
+    const rejectedPayload = await readJson<{ code: string }>(rejectedResponse)
+
+    expect(rejectedResponse.status).toBe(400)
+    expect(rejectedPayload.code).toBe('capture_session_performance_limit_exceeded')
+  })
+})

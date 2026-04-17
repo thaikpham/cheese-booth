@@ -9,20 +9,32 @@ import {
   type SetStateAction,
 } from 'react'
 
+import { getPerformanceRecordingSupport } from '../lib/media'
 import {
+  type AudioSourceDescriptor,
   DEFAULT_CAMERA_SESSION_STATE,
   type CameraSessionState,
   type OperatorSettings,
+  type PerformanceAudioState,
   type SourceDescriptor,
 } from '../types'
+import { resolveAudioSourceRefresh } from './cameraSession/audioSourceRefresh'
+import {
+  getUnsupportedCameraSessionState,
+  resolvePermissionProbeState,
+} from './cameraSession/permissionState'
+import { resolveCameraSourceRefresh } from './cameraSession/sourceRefresh'
+import {
+  maximizeVideoTrackResolution,
+  releaseAttachedStream,
+} from './cameraSession/streamLifecycle'
 import {
   getMediaErrorMessage,
   isMissingDeviceMediaError,
   isPermissionDeniedMediaError,
   isRecoverableMediaStreamError,
-  pickBestDeviceId,
-  safeStopStream,
   supportsCameraAccess,
+  toAudioSourceDescriptor,
   toSourceDescriptor,
 } from './kioskControllerUtils'
 
@@ -34,6 +46,8 @@ interface UseCameraSessionOptions {
 
 interface UseCameraSessionResult {
   sources: SourceDescriptor[]
+  audioSources: AudioSourceDescriptor[]
+  performanceAudio: PerformanceAudioState
   cameraSession: CameraSessionState
   setCameraSession: Dispatch<SetStateAction<CameraSessionState>>
   openCapture: () => Promise<void>
@@ -41,35 +55,26 @@ interface UseCameraSessionResult {
   retryPermission: () => Promise<boolean>
 }
 
-async function maximizeVideoTrackResolution(
-  mediaStream: MediaStream,
-): Promise<void> {
-  const [videoTrack] = mediaStream.getVideoTracks()
+function toPerformanceAudioState(
+  state: Omit<PerformanceAudioState, 'recordingSupported' | 'recordingMimeType'>,
+): PerformanceAudioState {
+  const support = getPerformanceRecordingSupport()
 
-  if (
-    !videoTrack ||
-    typeof videoTrack.getCapabilities !== 'function' ||
-    typeof videoTrack.applyConstraints !== 'function'
-  ) {
-    return
+  if (!support.supported) {
+    return {
+      status: 'unsupported',
+      message: 'Runtime hiện tại không hỗ trợ MP4 native cho 60s Performance.',
+      selectedLabel: null,
+      recordingSupported: false,
+      recordingMimeType: null,
+    }
   }
 
-  const capabilities = videoTrack.getCapabilities()
-  const nextConstraints: MediaTrackConstraints = {}
-
-  if (typeof capabilities.width?.max === 'number' && capabilities.width.max > 0) {
-    nextConstraints.width = { ideal: capabilities.width.max }
+  return {
+    ...state,
+    recordingSupported: true,
+    recordingMimeType: support.mimeType,
   }
-
-  if (typeof capabilities.height?.max === 'number' && capabilities.height.max > 0) {
-    nextConstraints.height = { ideal: capabilities.height.max }
-  }
-
-  if (Object.keys(nextConstraints).length === 0) {
-    return
-  }
-
-  await videoTrack.applyConstraints(nextConstraints).catch(() => undefined)
 }
 
 export function useCameraSession({
@@ -78,22 +83,24 @@ export function useCameraSession({
   videoRef,
 }: UseCameraSessionOptions): UseCameraSessionResult {
   const [sources, setSources] = useState<SourceDescriptor[]>([])
+  const [audioSources, setAudioSources] = useState<AudioSourceDescriptor[]>([])
+  const [performanceAudio, setPerformanceAudio] = useState<PerformanceAudioState>(
+    () =>
+      toPerformanceAudioState({
+        status: 'unavailable',
+        message: 'Chưa dò được audio HDMI cho 60s Performance.',
+        selectedLabel: null,
+      }),
+  )
   const [cameraSession, setCameraSession] = useState(DEFAULT_CAMERA_SESSION_STATE)
   const streamRef = useRef<MediaStream | null>(null)
 
   const releaseStream = useCallback(async (stream: MediaStream | null): Promise<void> => {
-    await safeStopStream(stream)
-
-    if (stream && streamRef.current === stream) {
-      streamRef.current = null
-    }
-
-    const video = videoRef.current
-
-    if (video && (!stream || video.srcObject === stream)) {
-      video.pause()
-      video.srcObject = null
-    }
+    await releaseAttachedStream({
+      stream,
+      streamRef,
+      videoRef,
+    })
   }, [videoRef])
 
   const syncMissingDeviceState = useEffectEvent(() => {
@@ -130,9 +137,7 @@ export function useCameraSession({
       if (!supportsCameraAccess()) {
         setCameraSession((current) => ({
           ...current,
-          permissionState: 'unknown',
-          streamState: 'error',
-          lastError: 'Runtime hiện tại không hỗ trợ camera.',
+          ...getUnsupportedCameraSessionState(),
         }))
         return
       }
@@ -154,7 +159,11 @@ export function useCameraSession({
         await maximizeVideoTrackResolution(mediaStream)
 
         if (cancelled) {
-          await safeStopStream(mediaStream)
+          await releaseAttachedStream({
+            stream: mediaStream,
+            streamRef,
+            videoRef,
+          })
           return
         }
 
@@ -223,9 +232,7 @@ export function useCameraSession({
     if (!supportsCameraAccess()) {
       setCameraSession((current) => ({
         ...current,
-        permissionState: 'unknown',
-        streamState: 'error',
-        lastError: 'Runtime hiện tại không hỗ trợ camera.',
+        ...getUnsupportedCameraSessionState(),
       }))
 
       return false
@@ -241,33 +248,14 @@ export function useCameraSession({
 
       setCameraSession((current) => ({
         ...current,
-        permissionState: 'granted',
-        lastError: null,
+        ...resolvePermissionProbeState(null),
       }))
 
       return true
     } catch (error) {
-      const lastError = getMediaErrorMessage(error)
-
-      if (isPermissionDeniedMediaError(error)) {
-        setCameraSession((current) => ({
-          ...current,
-          permissionState: 'denied',
-          streamState: 'idle',
-          lastError,
-        }))
-
-        return false
-      }
-
       setCameraSession((current) => ({
         ...current,
-        permissionState:
-          isMissingDeviceMediaError(error) || isRecoverableMediaStreamError(error)
-            ? 'granted'
-            : 'unknown',
-        streamState: isMissingDeviceMediaError(error) ? 'missing-device' : 'error',
-        lastError,
+        ...resolvePermissionProbeState(error),
       }))
 
       return false
@@ -296,22 +284,64 @@ export function useCameraSession({
       const videoSources = devices
         .filter((device) => device.kind === 'videoinput')
         .map(toSourceDescriptor)
-      const nextDeviceId = pickBestDeviceId(videoSources, settings.deviceId)
-      const currentStillExists =
-        !!settings.deviceId &&
-        videoSources.some((source) => source.deviceId === settings.deviceId)
-      const shouldSwitchDevice =
-        !!nextDeviceId && (!settings.deviceId || !currentStillExists)
+      const nextAudioSources = devices
+        .filter((device) => device.kind === 'audioinput')
+        .map(toAudioSourceDescriptor)
+      const refreshResolution = resolveCameraSourceRefresh({
+        sources: videoSources,
+        selectedDeviceId: settings.deviceId,
+        isDeviceChange,
+      })
+      const nextVideoDeviceId = refreshResolution.shouldSelectDevice
+        ? refreshResolution.nextDeviceId
+        : refreshResolution.shouldClearDevice
+          ? null
+          : settings.deviceId
+      const audioResolution = resolveAudioSourceRefresh({
+        audioSources: nextAudioSources,
+        selectedAudioDeviceId: settings.audioDeviceId,
+        videoSources,
+        selectedVideoDeviceId: nextVideoDeviceId,
+      })
 
       setSources(videoSources)
+      setAudioSources(nextAudioSources)
+      setPerformanceAudio(toPerformanceAudioState(audioResolution.audioState))
 
-      if (shouldSwitchDevice && nextDeviceId) {
-        setSettings((current) =>
-          current.deviceId === nextDeviceId
-            ? current
-            : { ...current, deviceId: nextDeviceId },
-        )
+      if (
+        (refreshResolution.shouldSelectDevice && refreshResolution.nextDeviceId) ||
+        refreshResolution.shouldClearDevice ||
+        audioResolution.shouldSelectAudioDevice ||
+        audioResolution.shouldClearAudioDevice
+      ) {
+        setSettings((current) => {
+          const resolvedDeviceId = refreshResolution.shouldSelectDevice
+            ? refreshResolution.nextDeviceId
+            : refreshResolution.shouldClearDevice
+              ? null
+              : current.deviceId
+          const resolvedAudioDeviceId = audioResolution.shouldSelectAudioDevice
+            ? audioResolution.nextAudioDeviceId
+            : audioResolution.shouldClearAudioDevice
+              ? null
+              : current.audioDeviceId
 
+          if (
+            current.deviceId === resolvedDeviceId &&
+            current.audioDeviceId === resolvedAudioDeviceId
+          ) {
+            return current
+          }
+
+          return {
+            ...current,
+            deviceId: resolvedDeviceId,
+            audioDeviceId: resolvedAudioDeviceId,
+          }
+        })
+      }
+
+      if (refreshResolution.shouldSelectDevice && refreshResolution.nextDeviceId) {
         if (isDeviceChange) {
           setCameraSession((current) => ({
             ...current,
@@ -322,19 +352,12 @@ export function useCameraSession({
         return
       }
 
-      if (settings.deviceId && !currentStillExists && !nextDeviceId) {
+      if (refreshResolution.shouldClearDevice) {
         await releaseStream(streamRef.current)
-
-        setSettings((current) => ({
-          ...current,
-          deviceId: null,
-        }))
         setCameraSession((current) => ({
           ...current,
-          streamState: 'missing-device',
-          lastError: isDeviceChange
-            ? 'Nguồn camera đang dùng đã bị ngắt. Hãy chọn lại source.'
-            : null,
+          streamState: refreshResolution.streamState ?? current.streamState,
+          lastError: refreshResolution.lastError,
         }))
       }
     } catch (error) {
@@ -389,6 +412,8 @@ export function useCameraSession({
 
   return {
     sources,
+    audioSources,
+    performanceAudio,
     cameraSession,
     setCameraSession,
     openCapture,

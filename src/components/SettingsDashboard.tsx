@@ -3,6 +3,7 @@ import { useState, type RefObject } from 'react'
 import { Link } from 'react-router-dom'
 
 import cheeseLogo from '../../cheese_icon_transparent.svg'
+import { getCaptureModeLabel } from '../lib/captureModes'
 import {
   getCaptureRoute,
   getKioskPreviewAspect,
@@ -10,44 +11,44 @@ import {
   getKioskProfileLabel,
 } from '../lib/kioskProfiles'
 import type {
+  AudioSourceDescriptor,
   CaptureMode,
   CountdownSec,
   KioskProfile,
   OperatorSettings,
+  PerformanceAudioState,
   PermissionState,
   SourceDescriptor,
   StreamState,
 } from '../types'
 import { APP_NAME, APP_SUBTITLE } from '../lib/branding'
 import { getRuntimeEnvironment } from '../lib/runtime'
-import {
-  SettingsDashboardCameraPanel,
-  SettingsDashboardCapturePanel,
-  SettingsDashboardDownloadPanel,
-  SettingsDashboardOutputPanel,
-  SettingsDashboardOverviewPanel,
-  SettingsDashboardTransformPanel,
-} from './settings-dashboard/SettingsDashboardPanels'
 import { SettingsDashboardNav } from './settings-dashboard/SettingsDashboardNav'
+import { settingsDashboardPanelRegistry } from './settings-dashboard/settingsDashboardPanelRegistry'
 import { SettingsDashboardPreview } from './settings-dashboard/SettingsDashboardPreview'
 import {
   getPermissionSummary,
   getStreamSummary,
   type SectionId,
 } from './settings-dashboard/settingsDashboardUtils'
+import '../styles/settings-dashboard.css'
 
 interface SettingsDashboardProps {
   profile: KioskProfile
   settings: OperatorSettings
   sources: SourceDescriptor[]
+  audioSources: AudioSourceDescriptor[]
+  performanceAudio: PerformanceAudioState
   permissionState: PermissionState
   streamState: StreamState
   lastError: string | null
   isBusy: boolean
+  browserSessionStatus: 'idle' | 'active' | 'reviewing-shot' | 'finalizing' | 'ready' | 'error'
   previewFrameRef: RefObject<HTMLDivElement | null>
   previewCanvasRef: RefObject<HTMLCanvasElement | null>
   onModeChange: (mode: CaptureMode) => void
   onDeviceChange: (deviceId: string) => void
+  onAudioDeviceChange: (deviceId: string) => void
   onCountdownChange: (countdown: CountdownSec) => void
   onRotate: () => void
   onFlipHorizontal: () => void
@@ -60,14 +61,18 @@ export function SettingsDashboard({
   profile,
   settings,
   sources,
+  audioSources,
+  performanceAudio,
   permissionState,
   streamState,
   lastError,
   isBusy,
+  browserSessionStatus,
   previewFrameRef,
   previewCanvasRef,
   onModeChange,
   onDeviceChange,
+  onAudioDeviceChange,
   onCountdownChange,
   onRotate,
   onFlipHorizontal,
@@ -80,84 +85,47 @@ export function SettingsDashboard({
   const isPortrait = profile === 'portrait'
   const previewAspect = getKioskPreviewAspect(profile)
   const profileAspectLabel = getKioskProfileAspectLabel(profile)
-  const captureModeLabel = settings.captureMode === 'photo' ? 'Photo' : 'Boomerang'
+  const captureModeLabel = getCaptureModeLabel(settings.captureMode)
   const currentSourceLabel =
     sources.find((source) => source.deviceId === settings.deviceId)?.label ?? 'Chưa chọn'
+  const currentAudioSourceLabel =
+    audioSources.find((source) => source.deviceId === settings.audioDeviceId)?.label ??
+    'Auto / silent fallback'
   const permissionSummary = getPermissionSummary(permissionState)
   const streamSummary = getStreamSummary(streamState)
   const orientationLabel = getKioskProfileLabel(profile)
   const runtime = getRuntimeEnvironment()
-
-  function renderContent() {
-    switch (activeSection) {
-      case 'overview':
-        return (
-          <SettingsDashboardOverviewPanel
-            settings={settings}
-            captureModeLabel={captureModeLabel}
-            currentSourceLabel={currentSourceLabel}
-            runtime={runtime}
-            permissionSummary={permissionSummary}
-            streamSummary={streamSummary}
-            orientationLabel={orientationLabel}
-            profileAspectLabel={profileAspectLabel}
-            isBusy={isBusy}
-            lastError={lastError}
-          />
-        )
-
-      case 'capture':
-        return (
-          <SettingsDashboardCapturePanel
-            settings={settings}
-            captureModeLabel={captureModeLabel}
-            isBusy={isBusy}
-            onModeChange={onModeChange}
-            onCountdownChange={onCountdownChange}
-          />
-        )
-
-      case 'camera':
-        return (
-          <SettingsDashboardCameraPanel
-            settings={settings}
-            sources={sources}
-            permissionState={permissionState}
-            isBusy={isBusy}
-            permissionSummary={permissionSummary}
-            streamSummary={streamSummary}
-            currentSourceLabel={currentSourceLabel}
-            onDeviceChange={onDeviceChange}
-            onRetryPermission={onRetryPermission}
-            onRefreshSources={onRefreshSources}
-          />
-        )
-
-      case 'output':
-        return (
-          <SettingsDashboardOutputPanel
-            orientationLabel={orientationLabel}
-            runtime={runtime}
-          />
-        )
-
-      case 'transform':
-        return (
-          <SettingsDashboardTransformPanel
-            profile={profile}
-            settings={settings}
-            orientationLabel={orientationLabel}
-            isBusy={isBusy}
-            onRotate={onRotate}
-            onFlipHorizontal={onFlipHorizontal}
-            onFlipVertical={onFlipVertical}
-          />
-        )
-
-      case 'download':
-        return <SettingsDashboardDownloadPanel />
-    }
-  }
+  const renderPanel = settingsDashboardPanelRegistry[activeSection]
+  const modeLocked = browserSessionStatus !== 'idle'
+  const activePanel = renderPanel({
+    profile,
+    settings,
+    sources,
+    audioSources,
+    performanceAudio,
+    permissionState,
+    streamState,
+    lastError,
+    isBusy,
+    modeLocked,
+    captureModeLabel,
+    currentSourceLabel,
+    currentAudioSourceLabel,
+    permissionSummary,
+    streamSummary,
+    orientationLabel,
+    profileAspectLabel,
+    runtime,
+    onModeChange,
+    onDeviceChange,
+    onAudioDeviceChange,
+    onCountdownChange,
+    onRotate,
+    onFlipHorizontal,
+    onFlipVertical,
+    onRetryPermission,
+    onRefreshSources,
+  })
 
   return (
     <section className={`settings-dashboard settings-dashboard--${profile}`}>
@@ -200,13 +168,13 @@ export function SettingsDashboard({
           />
 
           <main className="sd-controls sd-controls--portrait">
-            {renderContent()}
+            {activePanel}
           </main>
         </div>
       ) : (
         <>
           <main className="sd-controls">
-            {renderContent()}
+            {activePanel}
           </main>
 
           <SettingsDashboardPreview

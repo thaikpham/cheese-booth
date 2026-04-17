@@ -547,6 +547,27 @@
   background: linear-gradient(90deg, #ff8d72 0%, #f2cf95 100%);
 }
 
+.capture-stage-inline-note {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  z-index: 2;
+  max-width: min(26rem, calc(100% - 36px));
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(14, 18, 26, 0.78);
+  color: var(--capture-enterprise-text-soft);
+  font-size: 0.75rem;
+  line-height: 1.45;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+}
+
+.capture-stage-inline-note--warn {
+  color: #ffe0be;
+  border-color: rgba(255, 190, 116, 0.28);
+}
+
 .capture-stage-countdown {
   position: absolute;
   inset: 0;

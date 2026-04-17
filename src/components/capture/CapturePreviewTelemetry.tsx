@@ -13,6 +13,10 @@ import {
   getKioskProfileAspectLabel,
   getKioskRotationOptions,
 } from '../../lib/kioskProfiles'
+import {
+  getCaptureModeEmoji,
+  getCaptureModeLabel,
+} from '../../lib/captureModes'
 import type { KioskProfile } from '../../types'
 import type { CaptureMode, CountdownSec, OperatorSettings } from '../../types'
 
@@ -26,6 +30,7 @@ type InteractiveTokenId =
 interface TelemetryOption {
   label: string
   selected: boolean
+  disabled?: boolean
   onSelect: () => void
 }
 
@@ -58,6 +63,8 @@ interface CapturePreviewTelemetryProps {
     'captureMode' | 'countdownSec' | 'rotationQuarter' | 'flipHorizontal' | 'flipVertical'
   >
   disabled?: boolean
+  modeLocked?: boolean
+  performanceEnabled?: boolean
   onModeChange: (mode: CaptureMode) => void
   onCountdownChange: (countdownSec: CountdownSec) => void
   onSetRotationQuarter: (
@@ -67,11 +74,13 @@ interface CapturePreviewTelemetryProps {
   onFlipVertical: () => void
 }
 
-const COUNTDOWN_OPTIONS: CountdownSec[] = [3, 5, 10]
+const COUNTDOWN_OPTIONS: CountdownSec[] = [0, 3, 5, 10]
 export function CapturePreviewTelemetry({
   profile,
   settings,
   disabled = false,
+  modeLocked = false,
+  performanceEnabled = true,
   onModeChange,
   onCountdownChange,
   onSetRotationQuarter,
@@ -80,7 +89,7 @@ export function CapturePreviewTelemetry({
 }: CapturePreviewTelemetryProps) {
   const rootRef = useRef<HTMLDivElement | null>(null)
   const [openTokenId, setOpenTokenId] = useState<InteractiveTokenId | null>(null)
-  const rotationOptions = getKioskRotationOptions(profile)
+  const rotationOptions = getKioskRotationOptions(profile, settings.captureMode)
   const rotationLocked = rotationOptions.length === 1
 
   useEffect(() => {
@@ -122,9 +131,9 @@ export function CapturePreviewTelemetry({
   const tokens: TelemetryToken[] = [
     {
       id: 'mode',
-      emoji: settings.captureMode === 'photo' ? '📷' : '🎞',
+      emoji: getCaptureModeEmoji(settings.captureMode),
       icon: Camera,
-      label: settings.captureMode === 'photo' ? 'Photo' : 'Boomerang',
+      label: getCaptureModeLabel(settings.captureMode),
       interactive: true,
       accent: true,
       menuLabel: 'Chọn chế độ camera',
@@ -132,6 +141,7 @@ export function CapturePreviewTelemetry({
         {
           label: 'Photo',
           selected: settings.captureMode === 'photo',
+          disabled: modeLocked,
           onSelect: () => {
             if (settings.captureMode !== 'photo') {
               onModeChange('photo')
@@ -141,9 +151,20 @@ export function CapturePreviewTelemetry({
         {
           label: 'Boomerang',
           selected: settings.captureMode === 'boomerang',
+          disabled: modeLocked,
           onSelect: () => {
             if (settings.captureMode !== 'boomerang') {
               onModeChange('boomerang')
+            }
+          },
+        },
+        {
+          label: '60s Performance',
+          selected: settings.captureMode === 'performance',
+          disabled: modeLocked || !performanceEnabled,
+          onSelect: () => {
+            if (settings.captureMode !== 'performance') {
+              onModeChange('performance')
             }
           },
         },
@@ -158,7 +179,7 @@ export function CapturePreviewTelemetry({
       accent: true,
       menuLabel: 'Chọn thời gian đếm ngược',
       options: COUNTDOWN_OPTIONS.map((value) => ({
-        label: `${value}s`,
+        label: value === 0 ? '0s · Chụp ngay' : `${value}s`,
         selected: settings.countdownSec === value,
         onSelect: () => {
           if (settings.countdownSec !== value) {
@@ -267,6 +288,10 @@ export function CapturePreviewTelemetry({
   }
 
   function handleSelectOption(option: TelemetryOption): void {
+    if (option.disabled) {
+      return
+    }
+
     option.onSelect()
     setOpenTokenId(null)
   }
@@ -337,6 +362,7 @@ export function CapturePreviewTelemetry({
                         .filter(Boolean)
                         .join(' ')}
                       onClick={() => handleSelectOption(option)}
+                      disabled={option.disabled}
                       role="menuitemradio"
                       aria-checked={option.selected}
                     >

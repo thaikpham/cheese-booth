@@ -1,6 +1,6 @@
 import type { CountdownSec, PermissionState, StreamState } from '../../types'
 
-export const COUNTDOWN_OPTIONS: CountdownSec[] = [3, 5, 10]
+export const COUNTDOWN_OPTIONS: CountdownSec[] = [0, 3, 5, 10]
 
 export type SectionId =
   | 'overview'

@@ -78,6 +78,7 @@ export function BrowserSessionOverlay({
 
   if (session.status === 'reviewing-shot' && outcome) {
     const isPhoto = outcome.kind === 'photo'
+    const isPerformance = outcome.kind === 'performance'
 
     return (
       <div className="browser-capture-outcome-backdrop">
@@ -89,10 +90,14 @@ export function BrowserSessionOverlay({
         >
           <OverlayHeading
             title="✨ Duyệt shot"
-            description={`Ổn thì thêm vào session. Còn ${Math.max(
-              0,
-              session.maxItems - session.items.length - 1,
-            )} slot sau shot này.`}
+            description={
+              isPerformance
+                ? 'Ổn thì thêm clip MP4 này vào session performance.'
+                : `Ổn thì thêm vào session. Còn ${Math.max(
+                    0,
+                    session.maxItems - session.items.length - 1,
+                  )} slot sau shot này.`
+            }
           />
 
           <div className="browser-capture-outcome-stage browser-capture-outcome-stage--review">
@@ -119,9 +124,10 @@ export function BrowserSessionOverlay({
                     <video
                       src={outcome.previewUrl}
                       className="browser-capture-outcome-video"
-                      autoPlay
-                      loop
-                      muted
+                      autoPlay={!isPerformance}
+                      loop={!isPerformance}
+                      muted={!isPerformance}
+                      controls={isPerformance}
                       playsInline
                     />
                   )}
@@ -163,7 +169,11 @@ export function BrowserSessionOverlay({
         >
           <OverlayHeading
             title="☁️ Đang tạo QR"
-            description={`Đẩy ${session.items.length} media lên gallery.`}
+            description={
+              session.captureMode === 'performance'
+                ? 'Đẩy clip performance MP4 lên gallery.'
+                : `Đẩy ${session.items.length} media lên gallery.`
+            }
           />
 
           <div className="browser-capture-outcome-stage browser-capture-outcome-stage--status">
@@ -192,7 +202,11 @@ export function BrowserSessionOverlay({
         >
           <OverlayHeading
             title="📲 QR sẵn sàng"
-            description="Một mã cho toàn bộ gallery của session."
+            description={
+              session.captureMode === 'performance'
+                ? 'Một mã cho clip performance MP4 của session.'
+                : 'Một mã cho toàn bộ gallery của session.'
+            }
           />
 
           <div className="browser-capture-outcome-stage browser-capture-outcome-stage--ready">
@@ -211,7 +225,9 @@ export function BrowserSessionOverlay({
 
               <div className="browser-capture-outcome-share-copy">
                 <p className="browser-capture-outcome-share-title">
-                  🎞 {session.items.length} media
+                  {session.captureMode === 'performance'
+                    ? '🎬 1 performance clip'
+                    : `🎞 ${session.items.length} media`}
                 </p>
                 <a
                   className="browser-capture-outcome-share-link"

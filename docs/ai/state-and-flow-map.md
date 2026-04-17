@@ -13,8 +13,10 @@ Read this before changing camera access, capture flow, review behavior, session 
 - `src/hooks/useKioskController.ts`
 - `src/hooks/useOperatorSettings.ts`
 - `src/hooks/useCameraSession.ts`
+- `src/hooks/cameraSession/*`
 - `src/hooks/usePreviewCanvas.ts`
 - `src/hooks/useCaptureActions.ts`
+- `src/hooks/captureActions/*`
 - `src/hooks/useBrowserCaptureSession.ts`
 - `src/hooks/useKioskBootstrap.ts`
 - `src/hooks/useKioskFullscreen.ts`
@@ -49,6 +51,7 @@ Owns:
 - `settingsReady`
 - `setSettings`
 - `updateSettings`
+- profile-scoped `audioDeviceId` persistence for performance capture
 
 Persistence:
 
@@ -64,9 +67,20 @@ Important rule:
 Purpose:
 - permission probe, source discovery, stream startup, stream recovery
 
+Helper ownership:
+
+- `src/hooks/cameraSession/permissionState.ts`
+  stable permission result mapping
+- `src/hooks/cameraSession/sourceRefresh.ts`
+  pure source-selection and missing-device recovery rules
+- `src/hooks/cameraSession/streamLifecycle.ts`
+  stream resolution upgrade plus attach/release helpers
+
 Owns:
 
 - `sources`
+- `audioSources`
+- `performanceAudio`
 - `cameraSession.permissionState`
 - `cameraSession.streamState`
 - `cameraSession.lastError`
@@ -90,6 +104,8 @@ Important behavior:
 
 - if permission is granted but no selected device exists, state becomes `missing-device`
 - if the selected device disappears, the hook clears `settings.deviceId` and moves into recovery
+- audio sources are enumerated separately and auto-paired to Cam Link / capture-card labels when possible
+- `performanceAudio` reports whether native MP4 + HDMI audio are ready, unavailable, or unsupported
 
 ## `usePreviewCanvas()`
 
@@ -120,11 +136,22 @@ Cleanup:
 Purpose:
 - high-level capture and browser session flow
 
+Helper ownership:
+
+- `src/hooks/captureActions/captureRender.ts`
+  countdown, media rendering, and staged item creation
+- `src/hooks/captureActions/sessionUploadUtils.ts`
+  pure session upload payload/pair mapping
+- `src/hooks/captureActions/blobLifecycle.ts`
+  blob URL cleanup
+- `src/hooks/captureActions/settingsActions.ts`
+  settings mutation handlers
+
 Owns:
 
 - `isBusy`
 - `countdownValue`
-- `boomerangRecording`
+- `recordingProgress`
 - `captureOutcome`
 - staged browser item before commit
 - cloud-share finalization calls
@@ -140,6 +167,13 @@ Blob lifecycle:
 - creates blob URLs for preview/poster assets
 - revokes URLs when outcomes or staged items are cleared
 - revokes all remaining URLs on hook unmount
+
+Performance recording:
+
+- uses a dedicated native `MediaRecorder` MP4 pipeline
+- captures a 2K 16:9 or 9:16 compositor canvas
+- combines optional HDMI audio from the selected `audioDeviceId`
+- supports tap-to-stop during recording and auto-stops at 60 seconds
 
 ## `useBrowserCaptureSession()`
 
@@ -160,7 +194,8 @@ Cleanup:
 Important rule:
 
 - this hook owns domain session status
-- `CaptureSideRail` owns extra UI-only session-button sub-states such as long-press confirm
+- session mode is locked when the session starts, so `performance` cannot mix with photo/boomerang items
+- `SessionFlowButton` owns extra UI-only session-button sub-states such as long-press confirm
 - removing a committed session item resequences the remaining items to keep slot numbering contiguous
 
 ## `useKioskBootstrap()`
@@ -223,6 +258,7 @@ Sequence:
 1. `handleShutter()` sets busy state
 2. countdown runs and plays countdown/shutter cues
 3. `renderPhotoFromVideo()` or `renderBoomerangFromVideo()` creates media
+   or `startPerformanceRecording()` records one MP4 clip
 4. preview outcome is created from the rendered blob
 5. a staged `BrowserSessionItem` is created but not yet committed
 6. `enterReviewingShot()` switches session to `reviewing-shot`
@@ -273,6 +309,7 @@ Important UI note:
 
 - `CaptureSideRail` keeps a fixed session-flow button slot and maps the domain state into UI states such as:
   `start`, `active-empty`, `finalize`, `finalizing`, `ready`, `retry`, `cancel-confirm`, `reset-confirm`
+- when `recordingProgress.mode === 'performance'`, the shutter button becomes a stop control instead of starting a new capture
 - long-press threshold: `450ms`
 - confirm timeout: `3000ms`
 

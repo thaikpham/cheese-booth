@@ -3,8 +3,8 @@ import type { RefObject } from 'react'
 
 import cheeseIcon from '../../../cheese_icon_transparent.svg'
 import type {
-  BoomerangRecordingIndicator,
   PermissionState,
+  RecordingProgressIndicator,
   StreamState,
 } from '../../types'
 
@@ -17,7 +17,9 @@ interface CapturePreviewProps {
   sourceUnavailable: boolean
   lastError: string | null
   countdownValue: number | null
-  boomerangRecording?: BoomerangRecordingIndicator | null
+  recordingProgress?: RecordingProgressIndicator | null
+  performanceNotice?: string | null
+  performanceNoticeTone?: 'neutral' | 'warn'
   onRetryPermission: () => void
   onRefreshSources: () => void
 }
@@ -31,15 +33,17 @@ export function CapturePreview({
   sourceUnavailable,
   lastError,
   countdownValue,
-  boomerangRecording,
+  recordingProgress,
+  performanceNotice,
+  performanceNoticeTone = 'neutral',
   onRetryPermission,
   onRefreshSources,
 }: CapturePreviewProps) {
-  const elapsedSeconds = boomerangRecording
-    ? formatSeconds(boomerangRecording.elapsedMs)
+  const elapsedSeconds = recordingProgress
+    ? formatSeconds(recordingProgress.elapsedMs)
     : null
-  const remainingSeconds = boomerangRecording
-    ? formatSeconds(boomerangRecording.remainingMs)
+  const remainingSeconds = recordingProgress
+    ? formatSeconds(recordingProgress.remainingMs)
     : null
 
   return (
@@ -54,24 +58,35 @@ export function CapturePreview({
         aria-label="Live preview"
       />
 
-      {boomerangRecording ? (
+      {recordingProgress ? (
         <div className="capture-stage-recording">
           <div className="capture-stage-recording-head">
             <span className="capture-stage-recording-dot" aria-hidden="true" />
-            <span>🎞 Đang quay</span>
+            <span>
+              {recordingProgress.mode === 'performance' ? '🎬 60s Performance' : '🎞 Đang quay'}
+            </span>
           </div>
           <div className="capture-stage-recording-meta">
-            <span>{elapsedSeconds}s / {formatSeconds(boomerangRecording.totalMs)}s</span>
-            <span>Còn {remainingSeconds}s</span>
+            <span>
+              {elapsedSeconds}s / {formatSeconds(recordingProgress.maxDurationMs)}s
+            </span>
+            <span>
+              {recordingProgress.mode === 'performance' ? 'Tap lần nữa để dừng' : `Còn ${remainingSeconds}s`}
+            </span>
           </div>
-          <div
-            className="capture-stage-recording-bar"
-            aria-hidden="true"
-          >
+          <div className="capture-stage-recording-bar" aria-hidden="true">
             <span
-              style={{ transform: `scaleX(${boomerangRecording.progress})` }}
+              style={{ transform: `scaleX(${recordingProgress.progress})` }}
             />
           </div>
+        </div>
+      ) : null}
+
+      {performanceNotice ? (
+        <div
+          className={`capture-stage-inline-note capture-stage-inline-note--${performanceNoticeTone}`}
+        >
+          {performanceNotice}
         </div>
       ) : null}
 

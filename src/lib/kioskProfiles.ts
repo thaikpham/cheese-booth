@@ -1,4 +1,4 @@
-import type { KioskProfile, OperatorSettings } from '../types'
+import type { CaptureMode, KioskProfile, OperatorSettings } from '../types'
 import {
   DEFAULT_LANDSCAPE_OPERATOR_SETTINGS,
   DEFAULT_PORTRAIT_OPERATOR_SETTINGS,
@@ -28,17 +28,23 @@ export function getKioskPreviewAspect(profile: KioskProfile): string {
 
 export function getKioskRotationOptions(
   profile: KioskProfile,
+  captureMode: CaptureMode = 'photo',
 ): OperatorSettings['rotationQuarter'][] {
-  return profile === 'portrait' ? [1] : [0, 1, 2, 3]
+  if (profile === 'portrait' && captureMode !== 'performance') {
+    return [1]
+  }
+
+  return [0, 1, 2, 3]
 }
 
 export function sanitizeRotationQuarterForProfile(
   profile: KioskProfile,
   rotationQuarter: number,
+  captureMode: CaptureMode = 'photo',
 ): OperatorSettings['rotationQuarter'] {
   const normalized = (((rotationQuarter % 4) + 4) % 4) as 0 | 1 | 2 | 3
 
-  if (profile === 'portrait') {
+  if (profile === 'portrait' && captureMode !== 'performance') {
     return 1
   }
 
@@ -54,6 +60,7 @@ export function normalizeOperatorSettingsForProfile(
     rotationQuarter: sanitizeRotationQuarterForProfile(
       profile,
       settings.rotationQuarter,
+      settings.captureMode,
     ),
   }
 }

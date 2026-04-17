@@ -109,6 +109,7 @@ User-facing modes:
 - live preview ready
 - countdown in progress
 - boomerang recording in progress
+- `60s Performance` recording in progress
 - shot review overlay
 - session finalizing
 - QR ready overlay
@@ -130,10 +131,14 @@ Edit these subcomponents for focused behavior:
   live preview shell, permission/source/countdown overlays
 - `CaptureSideRail.tsx`
   dock controls, fixed multi-state session button, long-press confirm UX
+- `SessionFlowButton.tsx`
+  session button state + long-press UI, keyed by session status/item-count resets
 - `BrowserSessionFilmStripRail.tsx`
   session tray with visual occupancy and quick delete for committed items
 - `BrowserSessionOverlay.tsx`
   review, finalizing, QR-ready, and error overlays
+- `CaptureScreenSections.tsx`
+  header, stage composition, and tray wiring extracted from `CaptureScreen`
 
 Important current rule:
 
@@ -191,11 +196,15 @@ Edit `SettingsDashboard.tsx` when changing:
 - section switching
 - portrait/landscape layout of controls vs preview
 
-Edit `SettingsDashboardPanels.tsx` when changing:
+- `settingsDashboardPanelRegistry.tsx` now owns the typed section-to-panel mapping.
+- `settings-dashboard/panels/*` now owns each section independently.
+
+Edit those panel modules when changing:
 
 - settings form content
 - copy
 - operator summaries
+- HDMI audio pairing / fallback messaging
 
 Edit `SettingsDashboardPreview.tsx` when changing:
 
@@ -237,6 +246,7 @@ Primary style file:
 
 Photo items render as images.
 Boomerang items render as looping videos with controls.
+Performance items render as MP4 video cards with a direct `.mp4` download CTA.
 
 ### Edit Guide
 

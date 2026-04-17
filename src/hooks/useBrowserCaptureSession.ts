@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 
 import {
   DEFAULT_BROWSER_CAPTURE_SESSION_STATE,
+  type CaptureMode,
   type BrowserCaptureSessionState,
   type BrowserSessionItem,
 } from '../types'
+import { getSessionMaxItems } from '../lib/captureModes'
 
 function revokeSessionItemUrls(items: BrowserSessionItem[]): void {
   items.forEach((item) => {
@@ -44,7 +46,7 @@ export function useBrowserCaptureSession() {
     })
   }
 
-  function startBrowserSession(): void {
+  function startBrowserSession(captureMode: CaptureMode): void {
     setBrowserSession((current) => {
       if (current.status === 'ready' || current.status === 'error' || current.items.length > 0) {
         revokeSessionItemUrls(current.items)
@@ -54,6 +56,8 @@ export function useBrowserCaptureSession() {
         ...DEFAULT_BROWSER_CAPTURE_SESSION_STATE,
         status: 'active',
         startedAt: Date.now(),
+        captureMode,
+        maxItems: getSessionMaxItems(captureMode),
       }
     })
   }
@@ -79,6 +83,7 @@ export function useBrowserCaptureSession() {
     setBrowserSession((current) => ({
       ...current,
       status: 'active',
+      captureMode: current.captureMode ?? item.kind,
       items: [...current.items, item].slice(0, current.maxItems),
     }))
   }

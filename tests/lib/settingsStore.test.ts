@@ -55,7 +55,8 @@ describe('settingsStore profile persistence', () => {
       JSON.stringify({
         captureMode: 'photo',
         deviceId: 'portrait-device',
-        countdownSec: 3,
+        audioDeviceId: 'portrait-audio',
+        countdownSec: 0,
         rotationQuarter: 1,
         flipHorizontal: true,
         flipVertical: false,
@@ -66,6 +67,7 @@ describe('settingsStore profile persistence', () => {
       JSON.stringify({
         captureMode: 'photo',
         deviceId: 'landscape-device',
+        audioDeviceId: 'landscape-audio',
         countdownSec: 3,
         rotationQuarter: 0,
         flipHorizontal: true,
@@ -76,10 +78,13 @@ describe('settingsStore profile persistence', () => {
     await expect(loadOperatorSettings('portrait')).resolves.toEqual({
       ...getDefaultOperatorSettings('portrait'),
       deviceId: 'portrait-device',
+      audioDeviceId: 'portrait-audio',
+      countdownSec: 0,
     })
     await expect(loadOperatorSettings('landscape')).resolves.toEqual({
       ...getDefaultOperatorSettings('landscape'),
       deviceId: 'landscape-device',
+      audioDeviceId: 'landscape-audio',
     })
   })
 
@@ -89,6 +94,7 @@ describe('settingsStore profile persistence', () => {
       JSON.stringify({
         captureMode: 'boomerang',
         deviceId: 'legacy-device',
+        audioDeviceId: 'legacy-audio',
         countdownSec: 10,
         rotationQuarter: 3,
         flipHorizontal: false,
@@ -108,6 +114,7 @@ describe('settingsStore profile persistence', () => {
     const portraitSettings = {
       ...getDefaultOperatorSettings('portrait'),
       deviceId: 'portrait-device',
+      audioDeviceId: 'portrait-audio',
     }
 
     await saveOperatorSettings('portrait', portraitSettings)
@@ -125,6 +132,7 @@ describe('settingsStore profile persistence', () => {
       JSON.stringify({
         ...getDefaultOperatorSettings('landscape'),
         deviceId: 'landscape-device',
+        audioDeviceId: 'landscape-audio',
       }),
     )
 
@@ -134,6 +142,7 @@ describe('settingsStore profile persistence', () => {
     await expect(loadOperatorSettings('landscape')).resolves.toEqual({
       ...getDefaultOperatorSettings('landscape'),
       deviceId: 'landscape-device',
+      audioDeviceId: 'landscape-audio',
     })
     expect(warnSpy).toHaveBeenCalledTimes(1)
     expect(storage.getItem(PORTRAIT_SETTINGS_KEY)).toBeNull()

@@ -129,4 +129,74 @@ describe('capture session gallery endpoints', () => {
       }),
     )
   })
+
+  it('returns performance items in gallery payloads and media downloads', async () => {
+    const createSignedDownloadUrl = vi.fn(
+      async () => 'https://download.example/performance-item',
+    )
+
+    vi.doMock('../../api/_lib/db.js', () => ({
+      findCaptureSessionByToken: vi.fn(async () => ({
+        session_id: 'session-performance',
+        download_token: 'C'.repeat(32),
+        status: 'ready' as const,
+        expires_at: new Date(Date.now() + 60_000).toISOString(),
+        created_at: new Date().toISOString(),
+        uploaded_at: new Date().toISOString(),
+        deleted_at: null,
+      })),
+      listCaptureSessionItems: vi.fn(async () => [
+        {
+          capture_id: '22222222-2222-4222-8222-222222222222',
+          session_id: 'session-performance',
+          sequence: 1,
+          kind: 'performance' as const,
+          storage_key: 'captures/performance/2026-04-16/item-1.mp4',
+          mime_type: 'video/mp4',
+          extension: 'mp4',
+          byte_size: 80_000_000,
+          width: 2048,
+          height: 1152,
+          created_at: new Date().toISOString(),
+        },
+      ]),
+    }))
+    vi.doMock('../../api/_lib/r2.js', () => ({
+      createSignedDownloadUrl,
+    }))
+
+    const { GET: galleryGet } = await import('../../api/capture-sessions/gallery.ts')
+    const galleryResponse = await galleryGet(
+      createJsonRequest(
+        `https://cheesebooth.vercel.app/api/capture-sessions/gallery?token=${'C'.repeat(32)}`,
+        {
+          method: 'GET',
+        },
+      ),
+    )
+    const galleryPayload = await readJson<{
+      items: Array<{ kind: string; extension: string }>
+    }>(galleryResponse)
+
+    expect(galleryResponse.status).toBe(200)
+    expect(galleryPayload.items[0]?.kind).toBe('performance')
+    expect(galleryPayload.items[0]?.extension).toBe('mp4')
+
+    const { GET: mediaGet } = await import('../../api/capture-sessions/media.ts')
+    const mediaResponse = await mediaGet(
+      createJsonRequest(
+        `https://cheesebooth.vercel.app/api/capture-sessions/media?token=${'C'.repeat(32)}&captureId=22222222-2222-4222-8222-222222222222&disposition=attachment`,
+        {
+          method: 'GET',
+        },
+      ),
+    )
+
+    expect(mediaResponse.status).toBe(302)
+    expect(createSignedDownloadUrl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        downloadFileName: expect.stringContaining('performance-01-'),
+      }),
+    )
+  })
 })
